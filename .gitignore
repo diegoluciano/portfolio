@@ -19,3 +19,4 @@ node_modules/
 *.g6-backup.mp4
 *.allintra-backup.mp4
 *.crush-backup.mp4
+*.soft-backup.mp4
