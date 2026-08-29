@@ -109,8 +109,8 @@
     "  float clearAmt = (1.0 - smoothstep(0.55, 1.05, centre)) * uHero;",
     "  float twinkle = 0.58 + 0.42 * sin(uTime * 1.7 + aRnd.x * 34.0);",
     "  vFade = (1.0 - clearAmt) * twinkle;",
-    "  vBright = 0.4 + 1.0 * aRnd.z + react * 0.5;",
-    "  gl_PointSize = clamp(uSize * (2.6 + 4.4 * aRnd.y) * " + DPR.toFixed(3) + ", 1.5, 120.0);",
+    "  vBright = 0.4 + 1.0 * aRnd.z + react * 0.5 + uLineOn * 0.6;", // the scan line glows
+    "  gl_PointSize = clamp(uSize * (2.6 + 4.4 * aRnd.y) * (1.0 + 0.35 * uLineOn) * " + DPR.toFixed(3) + ", 1.5, 120.0);",
     "}",
   ].join("\n");
 
@@ -426,12 +426,17 @@
     var t = workEl.getBoundingClientRect().top;
     return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
   }
-  // global visibility — lit through the scan-line sweep, then fades out just
-  // before the galleries; returns at the finale
-  function opacityFor(y) {
+  // global visibility — lit through the scan-line sweep, then GONE by the time
+  // the wipe reaches the base of #work (fade across the last third of the
+  // scan). Returns at the finale.
+  function opacityFor() {
     var vh = window.innerHeight;
-    var out = smooth(marks.gallery - vh * 0.3, marks.gallery + vh * 0.05, y); // 0→1
-    var back = smooth(marks.revive - vh * 0.35, marks.finale - vh * 0.1, y); // 0→1
+    var out = smooth(0.62, 0.98, scanFor()); // 0→1 as the wipe completes
+    var back = smooth(
+      marks.revive - vh * 0.35,
+      marks.finale - vh * 0.1,
+      window.__lenis ? window.__lenis.scroll : window.scrollY || window.pageYOffset
+    );
     return Math.max(0, Math.min(1, 1 - out + back * 0.92));
   }
 
@@ -470,7 +475,7 @@
   });
   var last = performance.now();
   var mDisp = morphFor(window.scrollY || 0);
-  var oDisp = opacityFor(window.scrollY || 0);
+  var oDisp = opacityFor();
   var uTime = 0,
     uSpin = 0;
 
@@ -502,7 +507,7 @@
     var lenis = window.__lenis;
     var y = lenis ? lenis.scroll : window.scrollY || window.pageYOffset;
     var mTarget = morphFor(y);
-    var oTarget = opacityFor(y);
+    var oTarget = opacityFor();
     var now = performance.now();
     var dt = forceDt != null ? forceDt : Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -533,7 +538,13 @@
     // emerald scanner: drive #work's reveal and walk the particle line down
     // the screen with its leading edge
     var reveal = scanFor();
-    if (workEl) workEl.style.setProperty("--work-reveal", reveal.toFixed(4));
+    if (workEl) {
+      workEl.style.setProperty("--work-reveal", reveal.toFixed(4));
+      // glow bar on the wipe edge — fades in over the first slice of the scan
+      // and out as it lands on the base
+      var glow = Math.max(0, Math.min(1, Math.min(reveal * 7, (1 - reveal) * 7)));
+      workEl.style.setProperty("--scan-glow", glow.toFixed(4));
+    }
     var lineOn = Math.max(0, 1 - Math.abs(mDisp - IDX.line));
     var lineDrop = 0;
     if (workEl && lineOn > 0.001) {

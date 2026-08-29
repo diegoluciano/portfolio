@@ -149,6 +149,25 @@ html.js body.pl-loading .scroll-scrub__poster {
   position: relative;
   z-index: 1;
 }
+/* glowing light bar riding the leading edge of the wipe (fx.js sets
+   --scan-glow 0→1→0 across the sweep) */
+#work::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--work-reveal, 0) * 100%);
+  height: 2px;
+  margin-top: -1px;
+  z-index: 2;
+  background: #b8ffe4;
+  opacity: var(--scan-glow, 0);
+  box-shadow:
+    0 0 14px 2px rgba(40, 242, 164, 0.95),
+    0 0 46px 12px rgba(40, 242, 164, 0.55),
+    0 0 120px 40px rgba(40, 242, 164, 0.25);
+  pointer-events: none;
+}
 #work .eyebrow,
 #work .eyebrow::before,
 #work .section__title,
@@ -166,6 +185,9 @@ body.work-solid #work .eyebrow::before {
 @media (prefers-reduced-motion: reduce) {
   #work::before {
     clip-path: none;
+  }
+  #work::after {
+    display: none;
   }
   #work .eyebrow,
   #work .section__title,
