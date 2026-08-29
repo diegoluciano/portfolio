@@ -33,7 +33,7 @@
   }
 
   var DPR = Math.min(mobile ? 2 : 1.75, window.devicePixelRatio || 1);
-  var COUNT = reduce ? 1400 : mobile ? 2600 : 6200;
+  var COUNT = reduce ? 1400 : mobile ? 2600 : 8800;
 
   // ---- shaders --------------------------------------------------------
   var VERT = [
@@ -231,24 +231,29 @@
   }
 
   // Hero: the field rides the emerald "floor glow" behind the portrait —
-  // a wide, shallow elliptical band low in the frame that curves up at the
-  // edges, densest at centre-bottom, with a few embers drifting off it.
+  // a wide, shallow elliptical band low in the frame that curves up gently
+  // at the edges, densest at centre-bottom. Kept tight to the glow so no
+  // particles float up into the black; only a whisper of embers lift off.
   function fFloorBand(a) {
     for (var p = 0; p < COUNT; p++) {
-      // triangular sample → clustered toward centre, spread near full width
-      var u = 0.5 + (Math.random() - Math.random()) * 0.7;
-      var x = (u * 2 - 1) * 1.2 * viewW;
+      // triangular sample → clustered toward centre, tapering before the edges
+      var u = 0.5 + (Math.random() - Math.random()) * 0.64;
+      var x = (u * 2 - 1) * 1.12 * viewW;
       var nx = x / viewW;
-      var baseY = -0.62 * viewH + nx * nx * 0.32 * viewH; // ellipse arc, rising at the sides
+      // shallow arc: sits low, lifts a little at the wings (subtler than before)
+      var baseY = -0.56 * viewH + nx * nx * 0.22 * viewH;
       var y, z;
-      if (p % 6 === 0) {
-        // embers lifting off the band
-        y = baseY + Math.random() * Math.random() * 0.95 * viewH;
-        z = rn() * 0.6;
+      if (p % 22 === 0) {
+        // rare ember — cubic bias + short rise keeps it hugging the band
+        y = baseY + Math.pow(Math.random(), 3) * 0.26 * viewH;
+        z = rn() * 0.5;
       } else {
-        // thickness of the band, thinner toward the bright core
-        y = baseY + gauss(0.14 * viewH) * (0.6 + 0.4 * Math.abs(nx));
-        z = rn() * 0.45;
+        // band thickness — tight at the bright core, a touch looser at the
+        // wings, biased downward so the soft top edge of the glow stays clean
+        var g = gauss(0.075 * viewH) * (0.62 + 0.45 * Math.abs(nx));
+        if (g > 0) g *= 0.55;
+        y = baseY + g;
+        z = rn() * 0.4;
       }
       a[p * 3] = x;
       a[p * 3 + 1] = y;
