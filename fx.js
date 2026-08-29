@@ -57,6 +57,8 @@
     "uniform float uMousePush;",// repulsion strength (world units)
     "uniform float uHero;",     // 1 at the hero formation, 0 elsewhere (gates face-clear / mouse / spin)
     "uniform float uKeep;",     // 0..1 fraction of the field kept (thinned past the hero)
+    "uniform float uLineOn;",   // 1 when the field is the horizontal scan line
+    "uniform float uLineDrop;", // world units the line has descended from the seam
     "varying float vBright;",
     "varying float vFade;",
     "float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }",
@@ -79,11 +81,15 @@
     "    vnoise(pos * 0.7 + vec3(t, 0.0, 0.0)),",
     "    vnoise(pos * 0.7 + vec3(0.0, t + 19.1, 0.0)),",
     "    vnoise(pos * 0.6 + vec3(0.0, 0.0, t + 43.7))) - 0.5;",
-    // in the hero the field rides the glow band — drift mostly sideways;
-    // vertical drift opens up once it morphs into other shapes
-    "  float yDrift = mix(1.0, 0.35, uHero);",
+    // hero band + scan line both want to stay flat — damp vertical drift, keep
+    // a little sideways shimmer; vertical drift opens up in the other shapes
+    "  float calm = max(uHero, uLineOn);",
+    "  float yDrift = mix(1.0, 0.28, calm);",
     "  n.x *= mix(1.0, 1.5, uHero); n.y *= yDrift;",
-    "  pos += n * (0.045 * (0.35 + 0.65 * aRnd.x));",
+    "  pos += n * (0.045 * (0.35 + 0.65 * aRnd.x) * mix(1.0, 0.55, uLineOn));",
+    // scan-line reveal: the field has collapsed onto the #expertise/#work seam
+    // (top of frame) and now walks down as the leading edge of the emerald wipe
+    "  pos.y -= uLineDrop * uLineOn;",
     "  float spin = min(uSpin, 0.28) * uHero;",
     "  float c = cos(spin), s = sin(spin);",
     "  pos.xz = mat2(c, -s, s, c) * pos.xz;",
@@ -171,6 +177,8 @@
     uMousePush: gl.getUniformLocation(prog, "uMousePush"),
     uHero: gl.getUniformLocation(prog, "uHero"),
     uKeep: gl.getUniformLocation(prog, "uKeep"),
+    uLineOn: gl.getUniformLocation(prog, "uLineOn"),
+    uLineDrop: gl.getUniformLocation(prog, "uLineDrop"),
   };
   gl.uniform3f(loc.uColor, 0.157, 0.949, 0.643); // #28f2a4
   gl.uniform1f(loc.uAlpha, reduce ? 0.4 : 0.85);
@@ -180,6 +188,8 @@
   gl.uniform1f(loc.uMouseOn, 0);
   gl.uniform1f(loc.uHero, 1);
   gl.uniform1f(loc.uKeep, 1);
+  gl.uniform1f(loc.uLineOn, 0);
+  gl.uniform1f(loc.uLineDrop, 0);
 
   gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
@@ -293,16 +303,16 @@
       a[p * 3 + 2] = gauss(0.6);
     }
   }
-  // Work intro: the field migrates INTO the "Selected work" section — a
-  // contained cluster over the left-centre where the heading sits. It fades
-  // to nothing here (opacityFor) while the section itself turns solid
-  // emerald (script.js body.work-solid), so it reads as the particles
-  // pouring into the section. Never full-viewport.
-  function fWorkGather(a) {
+  // Work reveal: the field collapses into a thin, full-width horizontal line
+  // sitting exactly on the #expertise / #work seam (top of frame). From there
+  // uLineDrop walks it down the screen as the leading edge of the emerald
+  // "scanner" wipe on #work — fx.js drives #work's --work-reveal in lockstep.
+  // opacityFor keeps it lit through the sweep, then drops it before the galleries.
+  function fLine(a) {
     for (var p = 0; p < COUNT; p++) {
-      a[p * 3] = -0.42 * viewW + gauss(0.42 * viewW);
-      a[p * 3 + 1] = -0.05 * viewH + gauss(0.4 * viewH);
-      a[p * 3 + 2] = gauss(0.3);
+      a[p * 3] = rn() * 1.45 * viewW; // full viewport width, edge to edge
+      a[p * 3 + 1] = viewH + gauss(0.013 * viewH); // thin band at the top of frame
+      a[p * 3 + 2] = rn() * 0.22;
     }
   }
   // The explosion — flung outward past the frame edges. With the opacity
@@ -327,7 +337,7 @@
     ["floor", fFloorBand], // hero
     ["grid", fGrid], // stats
     ["cloud", fCloud], // pillars
-    ["gather", fWorkGather], // work intro — contained cluster, fades as the section turns emerald
+    ["line", fLine], // #expertise/#work seam — the emerald scanner edge
     ["scatter", fScatter], // work galleries — dispersed / gone
     ["stars", fConstellation], // finale
   ];
@@ -365,6 +375,7 @@
   }
 
   // ---- scroll → morph + opacity envelope ---------------------
+  var workEl = document.getElementById("work");
   var marks = {
     stats: Infinity,
     pillars: Infinity,
@@ -399,25 +410,27 @@
       return IDX.floor + smooth(marks.stats - vh, marks.stats, y);
     if (y < w - vh * 1.5)
       return IDX.grid + smooth(marks.pillars - vh, marks.pillars, y);
-    if (y < w - vh * 0.35)
-      return IDX.cloud + smooth(w - vh * 1.5, w - vh * 0.75, y); // cloud → gather
+    if (y < w - vh * 0.55)
+      return IDX.cloud + smooth(w - vh * 1.35, w - vh * 0.6, y); // cloud → line (formed as the seam nears the top)
     if (y < marks.revive - vh)
-      return IDX.gather + smooth(w - vh * 0.35, marks.gallery - vh * 0.3, y); // gather → scatter
+      return IDX.line + smooth(w + vh * 0.1, w + vh * 0.5, y); // line → scatter, after the sweep
     return IDX.scatter + smooth(marks.revive - vh * 0.4, marks.finale, y); // scatter → stars
   }
-  // 1 while #work owns the screen (the emerald moment), 0 elsewhere
-  function workFor(y) {
-    var vh = window.innerHeight;
-    return (
-      smooth(marks.work - vh * 0.7, marks.work - vh * 0.15, y) *
-      (1 - smooth(marks.work + vh * 0.35, marks.work + vh * 0.9, y))
-    );
+  // Emerald "scanner" reveal for #work: 0 = hidden, 1 = fully green. Runs from
+  // work's top ~55% down the viewport to ~5% down (~half a viewport of scroll),
+  // so it completes well before the first gallery pins. Reads the live rect so
+  // it scrubs cleanly both directions.
+  function scanFor() {
+    if (!workEl) return 0;
+    var vpH = window.innerHeight;
+    var t = workEl.getBoundingClientRect().top;
+    return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
   }
-  // global visibility — the field fades to nothing as it pours into #work,
-  // stays gone through the whole portfolio, returns only at the finale
+  // global visibility — lit through the scan-line sweep, then fades out just
+  // before the galleries; returns at the finale
   function opacityFor(y) {
     var vh = window.innerHeight;
-    var out = smooth(marks.work - vh * 0.65, marks.work - vh * 0.05, y); // 0→1
+    var out = smooth(marks.gallery - vh * 0.3, marks.gallery + vh * 0.05, y); // 0→1
     var back = smooth(marks.revive - vh * 0.35, marks.finale - vh * 0.1, y); // 0→1
     return Math.max(0, Math.min(1, 1 - out + back * 0.92));
   }
@@ -516,13 +529,34 @@
 
     var hero = Math.max(0, 1 - Math.abs(mDisp - IDX.floor)); // 1 at the hero band, 0 elsewhere
     var y = window.__lenis ? window.__lenis.scroll : window.scrollY || window.pageYOffset;
-    var atWork = reduce ? 0 : workFor(y);
-    if (atWork > 0.5) document.body.classList.add("work-solid");
+
+    // emerald scanner: drive #work's reveal and walk the particle line down
+    // the screen with its leading edge
+    var reveal = scanFor();
+    if (workEl) workEl.style.setProperty("--work-reveal", reveal.toFixed(4));
+    var lineOn = Math.max(0, 1 - Math.abs(mDisp - IDX.line));
+    var lineDrop = 0;
+    if (workEl && lineOn > 0.001) {
+      var wr = workEl.getBoundingClientRect();
+      var edgePx = wr.top + reveal * wr.height; // screen Y of the wipe edge
+      lineDrop = (2 * viewH * edgePx) / window.innerHeight; // → world units below the seam
+    }
+    gl.uniform1f(loc.uLineOn, lineOn);
+    gl.uniform1f(loc.uLineDrop, lineDrop);
+
+    // black text / topbar blend while the emerald covers the copy; release it
+    // once #work has scrolled away into the galleries
+    var offWork = smooth(
+      marks.gallery - window.innerHeight * 0.15,
+      marks.gallery + window.innerHeight * 0.35,
+      y
+    );
+    if (reveal * (1 - offWork) > 0.35) document.body.classList.add("work-solid");
     else document.body.classList.remove("work-solid");
-    // hard guarantee: the canvas is not even composited from just past the
-    // work moment until the finale — particles can never touch the galleries
+    // hard guarantee: the canvas is not even composited once the line has swept
+    // past, through the galleries, until the finale
     canvas.style.visibility =
-      !reduce && mDisp > IDX.gather + 0.35 && mDisp < IDX.stars - 0.6
+      !reduce && mDisp > IDX.line + 0.5 && mDisp < IDX.stars - 0.6
         ? "hidden"
         : "visible";
     setSegment(Math.floor(mDisp));

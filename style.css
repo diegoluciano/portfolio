@@ -129,18 +129,31 @@ html.js body.pl-loading .scroll-scrub__poster {
   opacity: 0;
 }
 
-/* Work intro — as the particle field pours in and vanishes, the section
-   itself takes a solid emerald fill and its text flips to black.
-   fx.js toggles body.work-solid. */
-#work,
+/* Work reveal — a full-width emerald "scanner" wipes #work from top to bottom
+   as you scroll it in, its leading edge tracked by the particle line. fx.js
+   drives --work-reveal 0→1 and toggles body.work-solid for the text flip. */
+#work {
+  position: relative;
+  isolation: isolate;
+}
+#work::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #28f2a4;
+  clip-path: inset(0 0 calc((1 - var(--work-reveal, 0)) * 100%) 0);
+  pointer-events: none;
+}
+#work > * {
+  position: relative;
+  z-index: 1;
+}
 #work .eyebrow,
 #work .eyebrow::before,
 #work .section__title,
 #work .section__subtitle {
-  transition: color 0.45s ease, background-color 0.55s ease;
-}
-body.work-solid #work {
-  background-color: #28f2a4;
+  transition: color 0.4s ease;
 }
 body.work-solid #work .eyebrow,
 body.work-solid #work .section__title,
@@ -149,6 +162,19 @@ body.work-solid #work .section__subtitle {
 }
 body.work-solid #work .eyebrow::before {
   background-color: #05070a;
+}
+@media (prefers-reduced-motion: reduce) {
+  #work::before {
+    clip-path: none;
+  }
+  #work .eyebrow,
+  #work .section__title,
+  #work .section__subtitle {
+    color: #05070a;
+  }
+  #work .eyebrow::before {
+    background-color: #05070a;
+  }
 }
 
 /* WebGL particle field (fx.js) — fixed behind the content, screen-blended
