@@ -34,6 +34,9 @@
 
   var DPR = Math.min(mobile ? 2 : 1.75, window.devicePixelRatio || 1);
   var COUNT = reduce ? 1600 : mobile ? 3400 : 16000;
+  // fraction of COUNT still drawn once past the hero (stats / pillars etc.) —
+  // the dense hero fill is too busy behind body copy
+  var REST_FRAC = reduce ? 1 : 0.26;
 
   // ---- shaders --------------------------------------------------------
   var VERT = [
@@ -524,7 +527,13 @@
     gl.uniform1f(loc.uSpin, uSpin);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.POINTS, 0, COUNT);
+    // The hero wants the full dense fill, but that same count sits behind the
+    // stats / pillars copy from the 2nd section on and drowns the text. The
+    // formation builders fill indices 0..COUNT with random-sampled positions,
+    // so drawing a prefix is just a uniform thin-out. Ramp count down with
+    // `hero` (1 at the floor band → 0 once the grid/cloud take over).
+    var drawN = Math.round(COUNT * (REST_FRAC + (1 - REST_FRAC) * hero));
+    gl.drawArrays(gl.POINTS, 0, drawN);
   }
 
   if (reduce) {
