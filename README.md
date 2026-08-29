@@ -45,7 +45,7 @@ fetched with `fetch()` as a blob, so it must be served over HTTP, not `file://`.
 2. Create a repo and push to `main`.
 3. Repo → Settings → Pages → Source: **Deploy from a branch**, branch `main`, folder `/ (root)`.
 4. `.nojekyll` is already present so `assets/` is served untouched.
-5. Update the absolute URLs (`https://diegohenriqueluciano.github.io/...`) in the
+5. Update the absolute URLs (`https://diegoluciano.github.io/portfolio/...`) in the
    `<link rel="canonical">` and `og:*` tags of `index.html` / `all-work.html`
    if the final Pages URL differs.
 
