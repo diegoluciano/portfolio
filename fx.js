@@ -35,8 +35,9 @@
   var DPR = Math.min(mobile ? 2 : 1.75, window.devicePixelRatio || 1);
   var COUNT = reduce ? 1600 : mobile ? 3400 : 16000;
   // fraction of COUNT still drawn once past the hero (stats / pillars etc.) —
-  // the dense hero fill is too busy behind body copy
-  var REST_FRAC = reduce ? 1 : 0.26;
+  // the dense 16k hero fill is too busy behind body copy; ~0.38 lands the
+  // non-hero sections back near the old ~6k baseline density
+  var REST_FRAC = reduce ? 1 : 0.38;
 
   // ---- shaders --------------------------------------------------------
   var VERT = [
@@ -55,6 +56,7 @@
     "uniform float uMouseR;",   // repulsion radius (world units)
     "uniform float uMousePush;",// repulsion strength (world units)
     "uniform float uHero;",     // 1 at the hero formation, 0 elsewhere (gates face-clear / mouse / spin)
+    "uniform float uKeep;",     // 0..1 fraction of the field kept (thinned past the hero)
     "varying float vBright;",
     "varying float vFade;",
     "float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }",
@@ -66,6 +68,11 @@
     "                 mix(hash(p+vec3(0,1,1)),hash(p+vec3(1,1,1)),f.x),f.y),f.z);",
     "}",
     "void main(){",
+    // thin the field to uKeep of its count with a stable per-particle draw —
+    // decorrelated from position, so every formation keeps its full extent,
+    // just sparser. Culled points are parked off-clip.
+    "  float keepRnd = hash(aRnd * 3.17 + 0.5);",
+    "  if (keepRnd > uKeep) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }",
     "  vec3 pos = mix(aFrom, aTo, smoothstep(0.0, 1.0, uT));",
     "  float t = uTime * 0.08 + aRnd.x * 6.2831;",
     "  vec3 n = vec3(",
@@ -163,6 +170,7 @@
     uMouseR: gl.getUniformLocation(prog, "uMouseR"),
     uMousePush: gl.getUniformLocation(prog, "uMousePush"),
     uHero: gl.getUniformLocation(prog, "uHero"),
+    uKeep: gl.getUniformLocation(prog, "uKeep"),
   };
   gl.uniform3f(loc.uColor, 0.157, 0.949, 0.643); // #28f2a4
   gl.uniform1f(loc.uAlpha, reduce ? 0.4 : 0.85);
@@ -171,6 +179,7 @@
   gl.uniform2f(loc.uMouse, 999, 999);
   gl.uniform1f(loc.uMouseOn, 0);
   gl.uniform1f(loc.uHero, 1);
+  gl.uniform1f(loc.uKeep, 1);
 
   gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
@@ -522,18 +531,15 @@
     gl.uniform1f(loc.uT, mDisp - curSeg);
     gl.uniform1f(loc.uM, mDisp);
     gl.uniform1f(loc.uHero, hero);
+    // full field in the hero, thinned to REST_FRAC once the grid/cloud take
+    // over so it doesn't fight the body copy (same extent, fewer points)
+    gl.uniform1f(loc.uKeep, REST_FRAC + (1 - REST_FRAC) * hero);
     gl.uniform1f(loc.uOpacity, oDisp);
     gl.uniform1f(loc.uTime, uTime);
     gl.uniform1f(loc.uSpin, uSpin);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    // The hero wants the full dense fill, but that same count sits behind the
-    // stats / pillars copy from the 2nd section on and drowns the text. The
-    // formation builders fill indices 0..COUNT with random-sampled positions,
-    // so drawing a prefix is just a uniform thin-out. Ramp count down with
-    // `hero` (1 at the floor band → 0 once the grid/cloud take over).
-    var drawN = Math.round(COUNT * (REST_FRAC + (1 - REST_FRAC) * hero));
-    gl.drawArrays(gl.POINTS, 0, drawN);
+    gl.drawArrays(gl.POINTS, 0, COUNT);
   }
 
   if (reduce) {
