@@ -396,13 +396,13 @@ body.work-solid .topbar__cta:focus-visible {
   z-index: 2;
   pointer-events: none;
   background:
-    /* Edge flood: pulls the near-black background toward solid --ss-bg so any
-       residual 8-bit banding in the dark field has nothing to step across. The
-       clear oval over the face/torso leaves the subject and the emerald floor
-       glow untouched. Pairs with the black-crushed encode. */
-    radial-gradient(78% 64% at 50% 40%, transparent 0%, transparent 46%, rgba(5, 7, 10, 0.34) 76%, rgba(5, 7, 10, 0.62) 100%),
-    radial-gradient(120% 90% at 50% 100%, rgba(5, 7, 10, 0.85) 0%, transparent 55%),
-    linear-gradient(180deg, rgba(5, 7, 10, 0.55) 0%, transparent 22%, transparent 62%, rgba(5, 7, 10, 0.9) 100%);
+    /* Edge flood: eases the near-black background toward --ss-bg so residual
+       banding has nothing to step across. Kept light so the portrait doesn't
+       read as over-contrasted; the clear oval over the face/torso leaves the
+       subject and the emerald floor glow untouched. */
+    radial-gradient(78% 64% at 50% 40%, transparent 0%, transparent 48%, rgba(5, 7, 10, 0.2) 78%, rgba(5, 7, 10, 0.42) 100%),
+    radial-gradient(120% 90% at 50% 100%, rgba(5, 7, 10, 0.7) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(5, 7, 10, 0.42) 0%, transparent 22%, transparent 62%, rgba(5, 7, 10, 0.78) 100%);
 }
 
 /* Film grain over the hero — high-frequency dither that breaks up h264's
@@ -720,7 +720,9 @@ body.work-solid .topbar__cta:focus-visible {
   font-size: clamp(3rem, 6.5vw, 6rem);
   font-weight: 700;
   line-height: 0.95;
-  color: var(--accent);
+  /* TEST: outline treatment, matching .pillar__index in the section below */
+  color: transparent;
+  -webkit-text-stroke: 2px var(--accent);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
