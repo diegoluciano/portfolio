@@ -629,10 +629,19 @@
     var shots = document.querySelectorAll("[data-hg-shot]");
     if (!shots.length) return;
 
+    var prefersReducedMotion =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     shots.forEach(function (shot) {
       var frame = shot.querySelector(".hg-shot__frame");
       var img = frame ? frame.querySelector("img") : null;
       if (!frame || !img) return;
+
+      // Most-negative translateY (px) the image can take before its bottom
+      // edge lifts off the frame bottom. Kept in sync by measure(); also the
+      // clamp bound for the drag-to-scrub handler below.
+      var minOffset = 0;
 
       function measure() {
         var frameHeight = frame.clientHeight;
@@ -653,6 +662,12 @@
         // duration. Aim for a readable ~90px/s scroll speed either way.
         var duration = Math.min(26, Math.max(8, distance / 84));
         shot.style.setProperty("--hg-shot-duration", duration.toFixed(2) + "s");
+        minOffset = -distance;
+        // Only meaningful to grab when the shot actually overflows.
+        shot.classList.toggle(
+          "is-draggable",
+          distance > 4 && !prefersReducedMotion
+        );
       }
 
       if (img.complete && img.naturalWidth) {
@@ -674,6 +689,116 @@
       window.addEventListener("load", measure);
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(measure);
+      }
+
+      if (!prefersReducedMotion) wireDrag();
+
+      /* Grab-and-position. On pointerdown the viewer takes the image over
+         from the auto-pan — seamlessly, from wherever it currently sits —
+         drags it vertically within its travel, and ~2.6s after release it
+         eases back to the top and the CSS loop resumes. Panels with nothing
+         to scroll never reach here (.is-draggable stays off). Keyboard
+         users lose nothing: the auto-pan still reveals the whole shot. */
+      function wireDrag() {
+        var dragging = false;
+        var pointerStartY = 0;
+        var offsetStart = 0;
+        var offset = 0;
+        var holdTimer = 0;
+        var returnId = 0;
+
+        function liveTranslateY() {
+          var t = getComputedStyle(img).transform;
+          if (!t || t === "none") return 0;
+          var m = t.match(/matrix\(([^)]+)\)/);
+          if (m) return parseFloat(m[1].split(",")[5]) || 0;
+          var m3 = t.match(/matrix3d\(([^)]+)\)/);
+          if (m3) return parseFloat(m3[1].split(",")[13]) || 0;
+          return 0;
+        }
+
+        function clampRubber(v) {
+          if (v > 0) return v * 0.25; // resist past the top
+          if (v < minOffset) return minOffset + (v - minOffset) * 0.25;
+          return v;
+        }
+
+        function apply() {
+          img.style.transform = "translateY(" + offset + "px)";
+        }
+
+        function onDown(e) {
+          if (!shot.classList.contains("is-draggable")) return;
+          if (e.button != null && e.button > 0) return; // primary button only
+          // Read the live auto-pan position BEFORE any class change — the
+          // .is-grabbed / .is-returning rules zero the animation, which would
+          // collapse the computed transform and make the grab jump to the top.
+          offsetStart = liveTranslateY();
+          dragging = true;
+          returnId++; // invalidate any pending return-home cleanup
+          clearTimeout(holdTimer);
+          pointerStartY = e.clientY;
+          offset = offsetStart;
+          shot.classList.remove("is-returning");
+          shot.classList.add("is-grabbed");
+          img.style.animation = "none";
+          apply();
+          try {
+            frame.setPointerCapture(e.pointerId);
+          } catch (err) {}
+          e.preventDefault();
+        }
+
+        function onMove(e) {
+          if (!dragging) return;
+          offset = clampRubber(offsetStart + (e.clientY - pointerStartY));
+          apply();
+          e.preventDefault();
+        }
+
+        function onUp(e) {
+          if (!dragging) return;
+          dragging = false;
+          shot.classList.remove("is-grabbed");
+          if (e && e.pointerId != null) {
+            try {
+              frame.releasePointerCapture(e.pointerId);
+            } catch (err) {}
+          }
+          // Ease off any rubber-band overshoot straight away.
+          var settled = Math.max(minOffset, Math.min(0, offset));
+          if (settled !== offset) {
+            offset = settled;
+            shot.classList.add("is-returning");
+            apply();
+          }
+          holdTimer = setTimeout(returnHome, 2600);
+        }
+
+        function returnHome() {
+          var id = ++returnId;
+          if (offset === 0) {
+            shot.classList.remove("is-returning");
+            img.style.transform = "";
+            img.style.animation = "";
+            return;
+          }
+          shot.classList.add("is-returning");
+          void img.offsetWidth; // commit current offset before transitioning
+          offset = 0;
+          apply();
+          setTimeout(function () {
+            if (id !== returnId || dragging) return;
+            shot.classList.remove("is-returning");
+            img.style.transform = "";
+            img.style.animation = ""; // CSS loop resumes from the top
+          }, 620);
+        }
+
+        frame.addEventListener("pointerdown", onDown, { passive: false });
+        frame.addEventListener("pointermove", onMove, { passive: false });
+        frame.addEventListener("pointerup", onUp);
+        frame.addEventListener("pointercancel", onUp);
       }
     });
   }

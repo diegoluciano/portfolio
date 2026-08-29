@@ -1081,6 +1081,32 @@ body.work-solid .topbar__cta {
   animation-play-state: paused;
 }
 
+/* Drag-to-scrub. script.js adds .is-draggable to a shot only when its
+   screenshot actually overflows the frame; there the viewer can grab the
+   image and position it by hand. The auto-pan yields on grab and eases
+   back to the top a couple of seconds after release. Panels with nothing
+   to scroll never get .is-draggable, so they keep the default cursor and
+   take no pointer input. touch-action: pan-x lets a horizontal swipe still
+   drive the gallery strip while we own the vertical drag. */
+.hg-shot.is-draggable .hg-shot__frame {
+  cursor: grab;
+  touch-action: pan-x;
+}
+.hg-shot.is-draggable .hg-shot__frame img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.hg-shot.is-grabbed .hg-shot__frame {
+  cursor: grabbing;
+}
+.hg-shot.is-grabbed .hg-shot__frame img {
+  animation: none;
+}
+.hg-shot.is-returning .hg-shot__frame img {
+  animation: none;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @keyframes hg-shot-scroll {
   0%,
   8% {
