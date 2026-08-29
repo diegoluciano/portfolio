@@ -33,7 +33,7 @@
   }
 
   var DPR = Math.min(mobile ? 2 : 1.75, window.devicePixelRatio || 1);
-  var COUNT = reduce ? 1400 : mobile ? 2600 : 8800;
+  var COUNT = reduce ? 1600 : mobile ? 3400 : 16000;
 
   // ---- shaders --------------------------------------------------------
   var VERT = [
@@ -230,31 +230,27 @@
     return ((Math.random() + Math.random() + Math.random()) / 1.5 - 1) * s;
   }
 
-  // Hero: the field rides the emerald "floor glow" behind the portrait —
-  // a wide, shallow elliptical band low in the frame that curves up gently
-  // at the edges, densest at centre-bottom. Kept tight to the glow so no
-  // particles float up into the black; only a whisper of embers lift off.
+  // Hero: the field FILLS the emerald "floor glow" behind the portrait —
+  // a wide pool of light low in the frame. Its top edge is a shallow convex
+  // arc (highest across the centre, easing down at the wings); particles
+  // fill from that edge downward into and past the bottom of frame, densest
+  // near the glowing edge and thinning toward the floor. Reads as a
+  // continuation of the video's green floor, not a traced line.
   function fFloorBand(a) {
     for (var p = 0; p < COUNT; p++) {
-      // triangular sample → clustered toward centre, tapering before the edges
-      var u = 0.5 + (Math.random() - Math.random()) * 0.64;
-      var x = (u * 2 - 1) * 1.12 * viewW;
+      // spread across (a touch beyond) the full width, softly centre-weighted
+      var u = 0.5 + (Math.random() - Math.random()) * 0.8;
+      var x = (u * 2 - 1) * 1.32 * viewW;
       var nx = x / viewW;
-      // shallow arc: sits low, lifts a little at the wings (subtler than before)
-      var baseY = -0.56 * viewH + nx * nx * 0.22 * viewH;
-      var y, z;
-      if (p % 22 === 0) {
-        // rare ember — cubic bias + short rise keeps it hugging the band
-        y = baseY + Math.pow(Math.random(), 3) * 0.26 * viewH;
-        z = rn() * 0.5;
-      } else {
-        // band thickness — tight at the bright core, a touch looser at the
-        // wings, biased downward so the soft top edge of the glow stays clean
-        var g = gauss(0.075 * viewH) * (0.62 + 0.45 * Math.abs(nx));
-        if (g > 0) g *= 0.55;
-        y = baseY + g;
-        z = rn() * 0.4;
-      }
+      // top edge of the pool — shallow, convex, ~0.12*viewH of drop wing-to-wing
+      var topY = -0.42 * viewH - nx * nx * 0.1 * viewH;
+      // depth below the edge: biased toward the top (where the glow reads),
+      // long soft tail sinking below the frame bottom
+      var d = Math.pow(Math.random(), 1.8);
+      var y = topY - d * 0.9 * viewH + gauss(0.03 * viewH);
+      var z = rn() * 0.5;
+      // a few embers just above the edge so the pool doesn't look clipped
+      if (p % 26 === 0) y = topY + Math.pow(Math.random(), 3) * 0.2 * viewH;
       a[p * 3] = x;
       a[p * 3 + 1] = y;
       a[p * 3 + 2] = z;
