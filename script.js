@@ -644,30 +644,53 @@
       var minOffset = 0;
 
       function measure() {
-        var frameHeight = frame.clientHeight;
-        if (frameHeight <= 0) return; // not laid out yet — a later observer call catches it
-        // The keyframe does `-100% + frameHeight`, so -100% self-tracks the
-        // image's real rendered height and the travel can never overshoot
-        // into empty space. JS only needs to feed the frame height + a
-        // duration proportional to how much actually overflows.
-        shot.style.setProperty("--hg-shot-frame-h", frameHeight + "px");
-        var renderedHeight =
-          img.getBoundingClientRect().height ||
-          (img.naturalWidth
-            ? frame.clientWidth * (img.naturalHeight / img.naturalWidth)
-            : 0);
-        var distance = Math.max(0, Math.round(renderedHeight - frameHeight));
-        // Full loop = scroll down + hold + scroll up + hold (see @keyframes
-        // hg-shot-scroll), so the one-way scroll is ~38% of the total
-        // duration. Aim for a readable ~90px/s scroll speed either way.
-        var duration = Math.min(26, Math.max(8, distance / 84));
-        shot.style.setProperty("--hg-shot-duration", duration.toFixed(2) + "s");
-        minOffset = -distance;
-        // Only meaningful to grab when the shot actually overflows.
-        shot.classList.toggle(
-          "is-draggable",
-          distance > 4 && !prefersReducedMotion
-        );
+        // Rendered image height comes from its intrinsic ratio × the frame
+        // *width* — width never changes when we resize the shot, so a
+        // re-measure can't feed back into a resize loop.
+        var frameWidth = frame.clientWidth;
+        if (frameWidth <= 0) return; // not laid out yet — a later observer call catches it
+        var ratio =
+          img.naturalWidth && img.naturalHeight
+            ? img.naturalHeight / img.naturalWidth
+            : 0;
+        var renderedHeight = ratio
+          ? Math.round(frameWidth * ratio)
+          : Math.round(img.getBoundingClientRect().height);
+        if (!renderedHeight) return;
+
+        // Frame height at the CSS baseline (no inline override applied).
+        var override = shot.style.height;
+        shot.style.height = "";
+        var baseFrameH = frame.clientHeight;
+        if (baseFrameH <= 0) {
+          shot.style.height = override;
+          return;
+        }
+        var overflow = renderedHeight - baseFrameH;
+
+        if (overflow > 8) {
+          // Creative is taller than the frame → keep the fixed browser frame
+          // and let it scroll/drag. The keyframe does `-100% + frame-h`, so
+          // -100% self-tracks the image height and travel never overshoots.
+          shot.classList.remove("is-fitted");
+          shot.style.setProperty("--hg-shot-frame-h", baseFrameH + "px");
+          // Full loop = down + hold + up + hold, ~38% of the duration each
+          // way; aim for a readable ~90px/s either direction.
+          var duration = Math.min(26, Math.max(8, overflow / 84));
+          shot.style.setProperty("--hg-shot-duration", duration.toFixed(2) + "s");
+          minOffset = -overflow;
+          shot.classList.toggle("is-draggable", !prefersReducedMotion);
+        } else {
+          // Creative is shorter than the frame → collapse the container onto
+          // it so there's no black letterbox inside the browser chrome.
+          var shotBaseH = shot.getBoundingClientRect().height;
+          shot.style.height =
+            Math.round(shotBaseH - (baseFrameH - renderedHeight)) + "px";
+          shot.style.setProperty("--hg-shot-frame-h", renderedHeight + "px");
+          minOffset = 0;
+          shot.classList.remove("is-draggable");
+          shot.classList.add("is-fitted");
+        }
       }
 
       if (img.complete && img.naturalWidth) {

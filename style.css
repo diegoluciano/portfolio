@@ -1107,6 +1107,18 @@ body.work-solid .topbar__cta {
   transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* script.js adds .is-fitted when the screenshot is shorter than the default
+   frame and sets an explicit height so the browser-chrome card hugs the
+   creative with no black letterbox below it. Nothing to scroll here. */
+.hg-shot.is-fitted {
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.hg-shot.is-fitted .hg-shot__frame img {
+  animation: none;
+  transform: none;
+}
+
 @keyframes hg-shot-scroll {
   0%,
   8% {
