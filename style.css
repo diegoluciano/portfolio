@@ -1,0 +1,1398 @@
+/* ============================================================
+   Diego Henrique Luciano — Portfolio
+   Tokens: ink-black / emerald accent / cream type
+   Display: Oswald (bold condensed) · Body: Inter
+   ============================================================ */
+
+:root {
+  --bg: #05070a;
+  --bg-soft: #0b0f14;
+  --ink: #f4efe1;
+  --muted: rgba(244, 239, 225, 0.68);
+  --muted-2: rgba(244, 239, 225, 0.42);
+  --accent: #28f2a4;
+  --accent-dim: rgba(40, 242, 164, 0.16);
+  --line: rgba(244, 239, 225, 0.14);
+
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --container: min(1180px, 92vw);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Lenis smooth scroll (script.js). When active it disables native
+   smooth-scroll so ScrollTrigger scrubbing/pinning stays exact. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+html.lenis {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ============================================================
+   Loader — the three title lines start as bars that grow in
+   place (one per real load milestone), then a top-to-bottom
+   curtain reveals each word; DESIGN ENGINEER and the tag row
+   follow, then the video (blur → sharp) and the particle field.
+   Driven by script.js. `.js` on <html> gates the hidden state
+   so no-JS still shows everything.
+   ============================================================ */
+body.pl-lock {
+  overflow: hidden;
+}
+
+@property --p {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.ttl-line {
+  display: block;
+}
+.ttl-word {
+  display: inline-block;
+  /* extra room below the baseline so descenders (the Q tail) are inside the
+     box that background-clip:text paints into — negative margin keeps the
+     line spacing unchanged. */
+  padding-bottom: 0.2em;
+  margin-bottom: -0.2em;
+}
+
+/* Loading effect: each word is a ghost that "inks in" left→right, and the
+   fill position IS that word's real load progress. script.js drives --p.
+   Gated on .js so no-JS shows plain text; when .js is dropped at the end
+   the words fall back to normal cream text (identical at --p:100%). */
+.js .ttl-word {
+  --p: 0%;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--ss-ink, #f4efe1) var(--p),
+    color-mix(in srgb, var(--ss-ink, #f4efe1) 13%, transparent) var(--p)
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  will-change: background-image;
+}
+
+.js .scroll-scrub__kicker,
+.js .scroll-scrub__tags,
+.js .topbar__cta,
+.js .lm-l,
+.js .scroll-scrub__scrollcue {
+  opacity: 0;
+}
+.lm-l {
+  display: inline-block;
+}
+
+#fx-field {
+  transition: opacity 1s ease;
+}
+.scroll-scrub__layer video {
+  transition: filter 1.1s ease, opacity 1s ease;
+}
+html.js body.pl-loading .scroll-scrub__layer video {
+  filter: blur(24px);
+  opacity: 0;
+}
+html.js body.pl-loading #fx-field,
+html.js body.pl-loading .scroll-scrub__poster {
+  opacity: 0;
+}
+
+/* Work intro — as the particle field pours in and vanishes, the section
+   itself takes a solid emerald fill and its text flips to black.
+   fx.js toggles body.work-solid. */
+#work,
+#work .eyebrow,
+#work .eyebrow::before,
+#work .section__title,
+#work .section__subtitle {
+  transition: color 0.45s ease, background-color 0.55s ease;
+}
+body.work-solid #work {
+  background-color: #28f2a4;
+}
+body.work-solid #work .eyebrow,
+body.work-solid #work .section__title,
+body.work-solid #work .section__subtitle {
+  color: #05070a;
+}
+body.work-solid #work .eyebrow::before {
+  background-color: #05070a;
+}
+
+/* WebGL particle field (fx.js) — fixed behind the content, screen-blended
+   so it only adds faint emerald light and never darkens text. */
+#fx-field {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: #05070a;
+}
+
+.container {
+  width: var(--container);
+  margin: 0 auto;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1.1rem;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 1.6rem;
+  height: 1px;
+  background: var(--accent);
+}
+
+/* ---------- Top bar (over hero) ---------- */
+.topbar {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(1.1rem, 3vw, 1.8rem) clamp(1.25rem, 4vw, 4rem);
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+/* over the solid-emerald Work section, drop the difference blend and go
+   plain black so the logo / CTA stay legible */
+.topbar__logo-mark,
+.topbar__cta {
+  transition: color 0.4s ease, border-color 0.4s ease;
+}
+body.work-solid .topbar {
+  mix-blend-mode: normal;
+}
+body.work-solid .topbar__logo,
+body.work-solid .topbar__logo-mark,
+body.work-solid .topbar__cta {
+  color: #05070a;
+}
+body.work-solid .topbar__cta {
+  border-color: #05070a;
+}
+
+.topbar__logo {
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.topbar__logo-mark {
+  font-family: "Covered By Your Grace", var(--font-display), cursive;
+  font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.topbar__cta {
+  pointer-events: auto;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Scroll-Scrub engine (Higgsfield reference, adapted)
+   ============================================================ */
+.scroll-scrub {
+  --ss-progress: 0;
+  position: relative;
+  isolation: isolate;
+  color: var(--ss-ink);
+  background: var(--ss-bg);
+}
+
+.scroll-scrub__stage {
+  position: sticky;
+  top: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ss-bg);
+}
+
+.scroll-scrub__media,
+.scroll-scrub__layer,
+.scroll-scrub__picture,
+.scroll-scrub__poster,
+.scroll-scrub__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.scroll-scrub__media {
+  z-index: 0;
+}
+
+.scroll-scrub__layer {
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  /* Scroll-driven camera push-in: the film layer eases from 1x to ~1.12x
+     across the hero scroll, reading as a slow dolly toward the subject on
+     top of the video's own micro-motion. Free (transform only); tracks
+     --ss-progress, which script.js keeps updated on the .scroll-scrub root. */
+  transform: scale(calc(1 + var(--ss-progress, 0) * 0.12));
+  transform-origin: 50% 36%;
+  will-change: opacity, transform;
+}
+
+.scroll-scrub__layer:first-child {
+  opacity: 1;
+}
+
+.scroll-scrub__poster,
+.scroll-scrub__video {
+  display: block;
+  object-fit: cover;
+  object-position: var(--ss-object-position);
+}
+
+.scroll-scrub__poster {
+  z-index: 0;
+}
+
+.scroll-scrub__poster--placeholder {
+  background:
+    radial-gradient(60% 55% at 50% 62%, color-mix(in srgb, var(--ss-accent) 16%, transparent) 0%, transparent 68%),
+    linear-gradient(180deg, var(--ss-bg) 0%, color-mix(in srgb, var(--ss-bg) 92%, black) 100%);
+  animation: posterGlow 3.2s ease-in-out infinite;
+}
+
+@keyframes posterGlow {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-scrub__poster--placeholder {
+    animation: none;
+  }
+  .scroll-scrub__layer {
+    transform: none;
+  }
+}
+
+.scroll-scrub__video {
+  z-index: 1;
+  background: var(--ss-bg, #05070a); /* no broken-media flash before the first frame paints */
+}
+
+.scroll-scrub__layer[data-video-painted="true"] .scroll-scrub__poster {
+  visibility: hidden;
+}
+
+/* Cinematic vignette + grade over the film */
+.scroll-scrub__stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    /* Edge flood: pulls the near-black background toward solid --ss-bg so any
+       residual 8-bit banding in the dark field has nothing to step across. The
+       clear oval over the face/torso leaves the subject and the emerald floor
+       glow untouched. Pairs with the black-crushed encode. */
+    radial-gradient(78% 64% at 50% 40%, transparent 0%, transparent 46%, rgba(5, 7, 10, 0.34) 76%, rgba(5, 7, 10, 0.62) 100%),
+    radial-gradient(120% 90% at 50% 100%, rgba(5, 7, 10, 0.85) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(5, 7, 10, 0.55) 0%, transparent 22%, transparent 62%, rgba(5, 7, 10, 0.9) 100%);
+}
+
+/* Film grain over the hero — high-frequency dither that breaks up h264's
+   banding / macro-blocking in the near-black areas of the clip. */
+.scroll-scrub__stage::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-scrub__stage::before {
+    opacity: 0.36;
+  }
+}
+
+.scroll-scrub__progress {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--ss-ink) 14%, transparent);
+  pointer-events: none;
+}
+
+.scroll-scrub__progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--ss-accent);
+  transform: scaleX(var(--ss-progress));
+  transform-origin: left center;
+}
+
+.scroll-scrub__story {
+  position: relative;
+  z-index: 3;
+  margin-top: -100dvh;
+  pointer-events: none;
+}
+
+.scroll-scrub__chapter,
+.scroll-scrub__connector-band {
+  position: relative;
+}
+
+.scroll-scrub__chapter-pin {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  min-height: 100dvh;
+  padding: clamp(5rem, 9vw, 8rem) clamp(1.25rem, 6vw, 6rem);
+  pointer-events: none;
+}
+
+.scroll-scrub__chapter[data-align="right"] .scroll-scrub__chapter-pin {
+  justify-content: flex-end;
+}
+
+.scroll-scrub__copy {
+  position: relative;
+  width: min(46rem, 60vw);
+  pointer-events: auto;
+}
+
+.scroll-scrub__kicker {
+  max-width: 30ch;
+  margin: 0 0 1rem;
+  color: var(--ss-accent);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.scroll-scrub__title {
+  max-width: 15ch;
+  margin: 0;
+  color: var(--ss-ink);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 8.5rem);
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.scroll-scrub__body {
+  max-width: 42ch;
+  margin: 1.5rem 0 0;
+  color: var(--ss-muted);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  line-height: 1.5;
+}
+
+.scroll-scrub__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ss-muted);
+  font-size: clamp(0.78rem, 1.15vw, 0.92rem);
+  letter-spacing: 0.02em;
+}
+
+.scroll-scrub__tags li {
+  padding: 0;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+.scroll-scrub__tags li:not(:first-child)::before {
+  content: "·";
+  margin: 0 0.55em;
+  color: color-mix(in srgb, var(--ss-muted) 70%, transparent);
+}
+
+.scroll-scrub__scrollcue {
+  position: absolute;
+  z-index: 6;
+  bottom: clamp(1.5rem, 4vw, 3rem);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ss-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  opacity: calc(1 - var(--ss-progress) * 6);
+  pointer-events: none;
+}
+
+.scroll-scrub__scrollcue-line {
+  width: 1px;
+  height: 2.4rem;
+  background: linear-gradient(180deg, var(--ss-accent), transparent);
+  animation: scrollcue 1.8s ease-in-out infinite;
+}
+
+@keyframes scrollcue {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+@media (max-width: 860px) {
+  .scroll-scrub__poster,
+  .scroll-scrub__video {
+    object-position: var(--ss-mobile-position);
+  }
+
+  .scroll-scrub__chapter-pin {
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 6.5rem max(1.25rem, env(safe-area-inset-right))
+      calc(4rem + env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
+  }
+
+  .scroll-scrub__copy {
+    width: min(100%, 36rem);
+  }
+
+  .scroll-scrub__title {
+    max-width: 12ch;
+    font-size: clamp(2.6rem, 13vw, 4.6rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-scrub__chapter {
+    min-height: 100dvh !important;
+  }
+
+  .scroll-scrub__connector-band {
+    display: none;
+  }
+
+  .scroll-scrub__progress span {
+    transition: none;
+  }
+
+  .scroll-scrub__scrollcue-line {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Reveal-on-scroll (rest of page)
+   ============================================================ */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Stats strip
+   ============================================================ */
+.stats {
+  position: relative;
+  z-index: 4;
+  padding: clamp(4rem, 9vw, 7rem) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.stats > .container {
+  position: relative;
+  z-index: 1;
+}
+
+.stats__grid {
+  position: relative;
+}
+
+/* A single hairline that draws itself left-to-right along the base of
+   the grid as the section is scroll-locked (script.js). Structural,
+   not decorative — reads as an underline being set, not an effect. */
+.stats__rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * clamp(1.5rem, 3vw, 2.5rem));
+  height: 1px;
+  pointer-events: none;
+}
+.stats__rule i {
+  display: block;
+  height: 100%;
+  /* faint on the left, a hint of accent at the leading edge — a quiet
+     directional cue, not a glow */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ink) 12%, transparent) 0%,
+    color-mix(in srgb, var(--ink) 22%, transparent) 60%,
+    color-mix(in srgb, var(--accent) 55%, transparent) 100%
+  );
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats__rule i {
+    transform: scaleX(1);
+  }
+}
+
+/* Applied by script.js on wide, motion-OK viewports: the section pins
+   (scroll-lock) while the numbers scrub in and count up. */
+.stats.is-locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.stats__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  row-gap: clamp(2.75rem, 6vw, 4.75rem);
+}
+
+.stat {
+  padding-right: 1.25rem;
+  border-right: 1px solid var(--line);
+}
+
+.stat:last-child {
+  border-right: 0;
+}
+
+.stat:nth-child(3n) {
+  border-right: 0;
+}
+
+.stat__value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6.5vw, 6rem);
+  font-weight: 700;
+  line-height: 0.95;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__label {
+  margin: 1rem 0 0;
+  max-width: 22ch;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .stats__grid {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 2.5rem;
+  }
+  .stat:nth-child(2n) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .stats__grid {
+    grid-template-columns: 1fr;
+  }
+  .stat {
+    padding-right: 0;
+    border-right: 0;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .stat:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* ============================================================
+   Section shell
+   ============================================================ */
+.section {
+  position: relative;
+  z-index: 4;
+  padding: clamp(5rem, 11vw, 9rem) 0;
+  background: var(--bg);
+}
+
+.section--soft {
+  background: var(--bg-soft);
+}
+
+.section__head {
+  max-width: 42rem;
+  margin-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+
+.section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 4.6vw, 4rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.section__subtitle {
+  margin: 1.1rem 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.55;
+}
+
+/* ============================================================
+   Pillars
+   ============================================================ */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: clamp(2rem, 5vw, 4.5rem);
+  row-gap: clamp(2.5rem, 6vw, 4rem);
+}
+
+.pillar {
+  padding: 0;
+}
+
+/* The three outlined cells stay put; script.js reveals each
+   .pillar__inner one at a time while #expertise is scroll-locked. */
+.pillar__inner {
+  will-change: transform;
+}
+
+#expertise.is-locked {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pillar__index {
+  display: block;
+  margin-bottom: 1.5rem;
+  color: var(--accent-dim);
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 700;
+  -webkit-text-stroke: 1px var(--accent);
+  color: transparent;
+}
+
+.pillar__title {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.pillar__body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 860px) {
+  .pillars {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Work — horizontal scroll-scrub galleries (GSAP ScrollTrigger)
+   Progressive enhancement: without JS/GSAP, .horiz-gallery-strip
+   is just a normal horizontally-scrollable flex row (swipeable).
+   Once GSAP initializes, body gets .hg-enhanced and the wrapper
+   becomes a pinned, scroll-driven horizontal film per project.
+   ============================================================ */
+.horiz-gallery-wrapper {
+  position: relative;
+  z-index: 4;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.horiz-gallery-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.horiz-gallery-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  will-change: transform;
+}
+
+.hg-enhanced .horiz-gallery-wrapper {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hg-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 70vh;
+  box-sizing: border-box;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.hg-enhanced .hg-panel {
+  min-height: 100vh;
+}
+
+.hg-panel--intro {
+  position: relative;
+  width: min(96vw, 74rem);
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4rem);
+  padding-left: clamp(1.5rem, 6vw, 6rem);
+}
+
+.hg-eyebrow {
+  margin: 0 0 1.25rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hg-next {
+  position: absolute;
+  left: clamp(1.5rem, 6vw, 6rem);
+  bottom: clamp(3rem, 12vh, 8rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--accent);
+  text-decoration: none;
+  transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
+}
+
+.hg-next svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.hg-next:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  transform: translateY(2px);
+}
+
+.hg-title {
+  margin: 0;
+  max-width: 14ch;
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 4.6vw, 4rem);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.hg-lede {
+  max-width: 42ch;
+  margin: 0 0 1.25rem;
+  color: var(--ink);
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  line-height: 1.5;
+}
+
+.hg-body-text p {
+  max-width: 48ch;
+  margin: 0 0 1.1rem;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+.hg-body-text p:last-child {
+  margin-bottom: 0;
+}
+
+.hg-body-text strong {
+  color: var(--ink);
+}
+
+.hg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.hg-meta dt {
+  margin: 0 0 0.35rem;
+  color: var(--muted-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hg-meta dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.hg-panel--image {
+  width: min(38vw, 22rem);
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+.hg-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 18rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--muted-2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* ---- Live-screenshot panels: real project shots that scroll into view on hover,
+   framed like a small browser window (masked viewport, not an AI-composited mockup) ---- */
+.hg-panel--shot {
+  width: min(46vw, 30rem);
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
+}
+
+.hg-shot {
+  position: relative;
+  height: 100%;
+  min-height: 18rem;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 80%, black 10%);
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.65);
+}
+
+.hg-shot__chrome {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.85rem;
+  background: color-mix(in srgb, var(--bg) 88%, white 4%);
+  border-bottom: 1px solid var(--line);
+}
+
+.hg-shot__chrome span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted-2) 55%, transparent);
+}
+
+.hg-shot__frame {
+  position: absolute;
+  top: 1.9rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.hg-shot__frame img {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  will-change: transform;
+  animation: hg-shot-scroll var(--hg-shot-duration, 12s) ease-in-out infinite;
+  animation-play-state: running;
+}
+
+/* Pausing (not re-triggering) on hover is deliberate: inside the pinned
+   horizontal gallery the strip itself translates under a stationary
+   cursor, so :hover can flicker on/off as panels slide past. A one-shot
+   hover-triggered transition would restart mid-flight and fight with
+   that; a looping animation that simply pauses/resumes is stateless and
+   never conflicts with the horizontal scroll-scrub. */
+.hg-shot:hover .hg-shot__frame img {
+  animation-play-state: paused;
+}
+
+@keyframes hg-shot-scroll {
+  0%,
+  8% {
+    transform: translateY(0);
+  }
+  46%,
+  54% {
+    /* -100% tracks the image's real height at animation time; adding back
+       the frame height lands its bottom edge exactly on the frame bottom.
+       min(0px, …) guards images shorter than the frame. Falls back to no
+       travel if the frame height hasn't been measured yet. */
+    transform: translateY(
+      min(0px, calc(-100% + var(--hg-shot-frame-h, 100%)))
+    );
+  }
+  92%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.hg-shot__caption {
+  position: absolute;
+  z-index: 2;
+  left: 0.85rem;
+  bottom: 0.7rem;
+  margin: 0;
+  color: color-mix(in srgb, var(--ink) 88%, transparent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hg-shot:hover .hg-shot__caption {
+    opacity: 1;
+  }
+}
+
+.hg-progress {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  pointer-events: none;
+}
+
+.hg-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+@media (max-width: 860px) {
+  .hg-panel--intro {
+    grid-template-columns: 1fr;
+    width: min(94vw, 100%);
+    padding-left: clamp(1.5rem, 6vw, 6rem);
+  }
+  .hg-panel--image {
+    width: min(85vw, 24rem);
+  }
+  .hg-panel--shot {
+    width: min(85vw, 26rem);
+  }
+  .hg-next {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hg-enhanced .horiz-gallery-wrapper,
+  .horiz-gallery-wrapper {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .horiz-gallery-strip {
+    flex-wrap: wrap;
+  }
+  .hg-panel,
+  .hg-panel--intro,
+  .hg-panel--image,
+  .hg-panel--shot {
+    width: 100% !important;
+    min-height: 0;
+  }
+  .hg-progress {
+    display: none;
+  }
+  .hg-shot__frame img {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   Finale CTA
+   ============================================================ */
+.finale {
+  position: relative;
+  z-index: 4;
+  padding: clamp(6rem, 14vw, 11rem) 0;
+  background: var(--bg);
+  text-align: center;
+  border-top: 1px solid var(--line);
+}
+
+.finale__eyebrow {
+  justify-content: center;
+}
+
+.finale__title {
+  margin: 0 auto;
+  max-width: 18ch;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 7vw, 6rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.finale__subtitle {
+  max-width: 40ch;
+  margin: 1.5rem auto 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  padding: 1.1rem 2.2rem;
+  background: var(--accent);
+  color: #05070a;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.btn-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -10px var(--accent-dim);
+}
+
+.btn-cta svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.footer {
+  position: relative;
+  z-index: 4;
+  padding: clamp(2.5rem, 5vw, 3.5rem) 0;
+  background: var(--bg);
+}
+
+.footer__grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-top: clamp(1.5rem, 3vw, 2rem);
+  border-top: 1px solid var(--line);
+}
+
+.footer__mark {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.footer__links a {
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.footer__links a:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.footer__note {
+  color: var(--muted-2);
+  font-size: 0.78rem;
+}
+
+/* ============================================================
+   More work — link out to the full project list
+   ============================================================ */
+.more-work {
+  border-top: 1px solid var(--line);
+}
+
+.more-work__inner {
+  text-align: center;
+}
+
+.more-work .section__title {
+  margin-top: 0.5rem;
+}
+
+.more-work .btn-outline {
+  margin-top: 2rem;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.9rem;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: border-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.btn-outline svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-outline:hover svg {
+  transform: rotate(45deg);
+}
+
+/* ============================================================
+   Sub-page static topbar (all-work.html)
+   ============================================================ */
+.topbar--static {
+  position: relative;
+  z-index: 10;
+  padding: clamp(1.5rem, 3vw, 2.2rem) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  mix-blend-mode: normal;
+  pointer-events: auto;
+}
+
+.topbar--static .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar--static .topbar__logo {
+  color: var(--ink);
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.25s ease;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}

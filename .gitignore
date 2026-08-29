@@ -1,0 +1,20 @@
+# macOS / exFAT junk
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# editor / tooling
+.vscode/
+.idea/
+*.log
+node_modules/
+
+# local scratch
+/tmp/
+*.opt.mp4
+
+# superseded hero renders (kept locally)
+*.orbit-backup.mp4
+*.g6-backup.mp4
+*.allintra-backup.mp4
