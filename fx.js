@@ -33,11 +33,11 @@
   }
 
   var DPR = Math.min(mobile ? 2 : 1.75, window.devicePixelRatio || 1);
-  var COUNT = reduce ? 1600 : mobile ? 3400 : 16000;
+  var COUNT = reduce ? 1400 : mobile ? 2800 : 13000;
   // fraction of COUNT still drawn once past the hero (stats / pillars etc.) —
-  // the dense 16k hero fill is too busy behind body copy; ~0.38 lands the
-  // non-hero sections back near the old ~6k baseline density
-  var REST_FRAC = reduce ? 1 : 0.38;
+  // the field is meant to read as ambient dust there, not a crowd; kept low
+  // on purpose (Diego: overall volume was too heavy past the hero)
+  var REST_FRAC = reduce ? 1 : 0.22;
 
   // ---- shaders --------------------------------------------------------
   var VERT = [
@@ -278,18 +278,15 @@
       a[p * 3 + 2] = z;
     }
   }
+  // Stats: deliberately no lattice, no rectangle — Diego flagged the old
+  // grid as reading like a drawn box around the numbers. Just a loose,
+  // uniform scatter across the whole frame so it sits behind the figures
+  // as ambient dust rather than a shape.
   function fGrid(a) {
-    var aspect = viewW / viewH;
-    var cols = Math.max(2, Math.round(Math.sqrt(COUNT * aspect)));
-    var rows = Math.ceil(COUNT / cols);
-    var w = 1.64 * viewW,
-      hh = 1.44 * viewH;
     for (var p = 0; p < COUNT; p++) {
-      var cx = p % cols,
-        cy = (p / cols) | 0;
-      a[p * 3] = -w / 2 + (w * (cx + 0.5)) / cols + gauss(0.006 * viewW);
-      a[p * 3 + 1] = hh / 2 - (hh * (cy + 0.5)) / rows + gauss(0.006 * viewH);
-      a[p * 3 + 2] = gauss(0.05);
+      a[p * 3] = rn() * 1.3 * viewW;
+      a[p * 3 + 1] = rn() * 1.2 * viewH;
+      a[p * 3 + 2] = rn() * 0.5;
     }
   }
   // Pillars: the grid "lets go" — a soft, unstructured cloud. Deliberately
