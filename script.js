@@ -936,6 +936,30 @@
                 });
               },
             });
+
+            // Piscadinha logo tile: scroll-scrubbed like the hero — video
+            // has no autoplay/loop, its currentTime just tracks how far
+            // this tile has crossed the (horizontally-scrolling) viewport.
+            // Scroll down = forward, scroll up = reverse, same as the hero.
+            var vidFrame = gridPanel.querySelector("[data-ss-video]");
+            var vidEl = gridPanel.querySelector("[data-ss-video-el]");
+            if (vidFrame && vidEl) {
+              var vidReady = false;
+              vidEl.addEventListener("loadedmetadata", function () {
+                vidReady = true;
+              });
+              ScrollTrigger.create({
+                trigger: vidFrame,
+                containerAnimation: hTween,
+                start: "left 95%",
+                end: "right 5%",
+                scrub: true,
+                onUpdate: function (self) {
+                  if (!vidReady || !vidEl.duration) return;
+                  vidEl.currentTime = self.progress * vidEl.duration;
+                },
+              });
+            }
           }
         });
 

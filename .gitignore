@@ -20,3 +20,6 @@ node_modules/
 *.allintra-backup.mp4
 *.crush-backup.mp4
 *.soft-backup.mp4
+
+# heavy source file — not web-playable (ProRes), replaced by mockups/piscadinha-scrub.mp4
+assets/work/dex/piscadinha-logo.mov
