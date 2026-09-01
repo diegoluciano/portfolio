@@ -944,10 +944,12 @@
             var vidFrame = gridPanel.querySelector("[data-ss-video]");
             var vidEl = gridPanel.querySelector("[data-ss-video-el]");
             if (vidFrame && vidEl) {
-              var vidReady = false;
-              vidEl.addEventListener("loadedmetadata", function () {
-                vidReady = true;
-              });
+              // Read vidEl.duration fresh on every update instead of
+              // gating on a "metadata loaded" flag set by a listener —
+              // this tiny file can finish loading (and fire
+              // loadedmetadata) before this script even attaches the
+              // listener, which left the flag permanently false and the
+              // scrub a no-op.
               ScrollTrigger.create({
                 trigger: vidFrame,
                 containerAnimation: hTween,
@@ -955,8 +957,9 @@
                 end: "right 5%",
                 scrub: true,
                 onUpdate: function (self) {
-                  if (!vidReady || !vidEl.duration) return;
-                  vidEl.currentTime = self.progress * vidEl.duration;
+                  var d = vidEl.duration;
+                  if (!d || !isFinite(d)) return;
+                  vidEl.currentTime = self.progress * d;
                 },
               });
             }
