@@ -1185,6 +1185,97 @@
   });
 })();
 
+/* ============================================================
+   Dex — "brand in use" masonry grid: items reveal on scroll with
+   a stagger, and any tile opens the full render in a lightbox
+   (GSAP fade + scale, backdrop / Esc / close-button to dismiss,
+   scroll locked while open).
+   ============================================================ */
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", function () {
+    var grid = document.querySelector("[data-mgrid]");
+    var lb = document.querySelector("[data-lb]");
+    if (!grid || !lb) return;
+
+    var items = [].slice.call(grid.querySelectorAll(".mgrid__item"));
+    var lbImg = lb.querySelector(".lightbox__img");
+    var lbCap = lb.querySelector(".lightbox__cap");
+    var lbFig = lb.querySelector(".lightbox__figure");
+    var closeBtn = lb.querySelector("[data-lb-close]");
+    var hasGsap = typeof gsap !== "undefined";
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var lastFocus = null;
+
+    if (hasGsap && typeof ScrollTrigger !== "undefined") {
+      gsap.registerPlugin(ScrollTrigger);
+      if (!reduce) {
+        gsap.set(items, { autoAlpha: 0, y: 42 });
+        ScrollTrigger.batch(items, {
+          start: "top 88%",
+          onEnter: function (els) {
+            gsap.to(els, {
+              autoAlpha: 1,
+              y: 0,
+              duration: 0.7,
+              stagger: 0.09,
+              ease: "power2.out",
+              overwrite: true,
+            });
+          },
+        });
+      }
+    }
+
+    function openLb(src, cap) {
+      lastFocus = document.activeElement;
+      lbImg.src = src;
+      lbImg.alt = cap || "";
+      lbCap.textContent = cap || "";
+      lb.hidden = false;
+      document.body.classList.add("pl-lock");
+      if (window.__lenis) window.__lenis.stop();
+      closeBtn.focus();
+      if (hasGsap && !reduce) {
+        gsap.fromTo(lb, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25, ease: "power1.out" });
+        gsap.fromTo(
+          lbFig,
+          { scale: 0.92, y: 18, autoAlpha: 0 },
+          { scale: 1, y: 0, autoAlpha: 1, duration: 0.42, ease: "power3.out" }
+        );
+      }
+    }
+
+    function closeLb() {
+      var done = function () {
+        lb.hidden = true;
+        lbImg.src = "";
+        document.body.classList.remove("pl-lock");
+        if (window.__lenis) window.__lenis.start();
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      };
+      if (hasGsap && !reduce) {
+        gsap.to(lb, { autoAlpha: 0, duration: 0.2, ease: "power1.in", onComplete: done });
+      } else {
+        done();
+      }
+    }
+
+    grid.addEventListener("click", function (e) {
+      var btn = e.target.closest(".mgrid__btn");
+      if (!btn) return;
+      openLb(btn.getAttribute("data-lb-src"), btn.getAttribute("data-lb-cap"));
+    });
+    closeBtn.addEventListener("click", closeLb);
+    lb.addEventListener("click", function (e) {
+      if (e.target === lb) closeLb();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !lb.hidden) closeLb();
+    });
+  });
+})();
+
 /* One final refresh once fonts and all assets have settled, after
    every block above has registered its ScrollTriggers — so the
    pin spacers are measured in top-to-bottom priority order and

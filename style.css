@@ -1297,6 +1297,199 @@ body.work-solid .topbar__cta:focus-visible {
 }
 
 /* ============================================================
+   Dex — "brand in use" masonry grid + lightbox
+   ============================================================ */
+.dex-grid {
+  position: relative;
+  z-index: 4;
+  background: var(--bg);
+}
+.dex-grid__head {
+  max-width: 42rem;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+.dex-grid__title {
+  margin: 0.6rem 0 0.8rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.03;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.dex-grid__sub {
+  margin: 0;
+  max-width: 48ch;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.mgrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 12rem;
+  grid-auto-flow: row dense;
+  gap: clamp(0.6rem, 1.4vw, 1rem);
+}
+.mgrid__item {
+  grid-row: span 2;
+}
+.mgrid__item--tall {
+  grid-row: span 3;
+}
+.mgrid__btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-soft);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.35s ease, border-color 0.35s ease;
+}
+.mgrid__btn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.55s ease;
+}
+.mgrid__cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1.6rem 0.9rem 0.7rem;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(to top, rgba(5, 7, 10, 0.82), transparent);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+@media (hover: hover) {
+  .mgrid__btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    transform: translateY(-3px);
+  }
+  .mgrid__btn:hover img {
+    transform: scale(1.045);
+  }
+  .mgrid__btn:hover .mgrid__cap {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mgrid__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 860px) {
+  .mgrid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 10rem;
+  }
+}
+@media (max-width: 520px) {
+  .mgrid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+  .mgrid__item,
+  .mgrid__item--tall {
+    grid-row: auto;
+  }
+  .mgrid__btn {
+    height: auto;
+    aspect-ratio: 4 / 5;
+  }
+  .mgrid__cap {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(3, 4, 6, 0.9);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.lightbox[hidden] {
+  display: none;
+}
+.lightbox__figure {
+  margin: 0;
+  max-width: min(92vw, 60rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+.lightbox__img {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.8);
+}
+.lightbox__cap {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lightbox__close {
+  position: absolute;
+  top: clamp(0.8rem, 3vw, 1.6rem);
+  right: clamp(0.8rem, 3vw, 1.6rem);
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+.lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mgrid__btn,
+  .mgrid__btn img,
+  .mgrid__cap,
+  .lightbox__close {
+    transition: none;
+  }
+}
+
+/* ============================================================
    Finale CTA
    ============================================================ */
 .finale {
