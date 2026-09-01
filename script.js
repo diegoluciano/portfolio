@@ -886,7 +886,7 @@
           ScrollTrigger.addEventListener("refreshInit", measure);
           measurers.push(measure);
 
-          gsap.to(strip, {
+          var hTween = gsap.to(strip, {
             x: function () {
               return -travel;
             },
@@ -910,6 +910,33 @@
               },
             },
           });
+
+          // Dex "brand in use" grid panel, if this strip has one: the
+          // tiles sit inside the horizontally-translating strip, so a
+          // normal (vertical) ScrollTrigger would fire the instant the
+          // pin starts — containerAnimation re-bases start/end against
+          // the strip's horizontal position instead, so the stagger
+          // plays only once the panel actually scrolls into view.
+          var gridPanel = sec.querySelector("[data-mgrid]");
+          if (gridPanel) {
+            var tiles = gridPanel.querySelectorAll(".mgrid__item");
+            gsap.set(tiles, { autoAlpha: 0, y: 30 });
+            ScrollTrigger.create({
+              trigger: gridPanel,
+              containerAnimation: hTween,
+              start: "left 85%",
+              onEnter: function () {
+                gsap.to(tiles, {
+                  autoAlpha: 1,
+                  y: 0,
+                  duration: 0.6,
+                  stagger: 0.07,
+                  ease: "power2.out",
+                  overwrite: true,
+                });
+              },
+            });
+          }
         });
 
         ScrollTrigger.refresh();
@@ -1186,10 +1213,11 @@
 })();
 
 /* ============================================================
-   Dex — "brand in use" masonry grid: items reveal on scroll with
-   a stagger, and any tile opens the full render in a lightbox
-   (GSAP fade + scale, backdrop / Esc / close-button to dismiss,
-   scroll locked while open).
+   Dex "brand in use" grid lightbox — any tile opens the full render
+   (GSAP fade + scale, backdrop / Esc / close-button to dismiss, scroll
+   locked while open). The grid's own scroll-in stagger is wired above,
+   in the galleries block, via containerAnimation (the tiles live inside
+   the horizontally-translating strip, not the normal page flow).
    ============================================================ */
 (function () {
   "use strict";
@@ -1198,7 +1226,6 @@
     var lb = document.querySelector("[data-lb]");
     if (!grid || !lb) return;
 
-    var items = [].slice.call(grid.querySelectorAll(".mgrid__item"));
     var lbImg = lb.querySelector(".lightbox__img");
     var lbCap = lb.querySelector(".lightbox__cap");
     var lbFig = lb.querySelector(".lightbox__figure");
@@ -1206,26 +1233,6 @@
     var hasGsap = typeof gsap !== "undefined";
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var lastFocus = null;
-
-    if (hasGsap && typeof ScrollTrigger !== "undefined") {
-      gsap.registerPlugin(ScrollTrigger);
-      if (!reduce) {
-        gsap.set(items, { autoAlpha: 0, y: 42 });
-        ScrollTrigger.batch(items, {
-          start: "top 88%",
-          onEnter: function (els) {
-            gsap.to(els, {
-              autoAlpha: 1,
-              y: 0,
-              duration: 0.7,
-              stagger: 0.09,
-              ease: "power2.out",
-              overwrite: true,
-            });
-          },
-        });
-      }
-    }
 
     function openLb(src, cap) {
       lastFocus = document.activeElement;
