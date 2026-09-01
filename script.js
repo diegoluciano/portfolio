@@ -872,15 +872,7 @@
           var strip = sec.querySelector("[data-hg-strip]");
           if (!strip) return;
           var progressBar = sec.querySelector(".hg-progress span");
-
-          // A scroll-scrubbed video tile inside this strip (the Dex
-          // "piscadinha" logo), if present — driven straight off the pin's
-          // own progress below, the one callback we know fires every frame.
           var gridPanel = sec.querySelector("[data-mgrid]");
-          var vidEl = sec.querySelector("[data-ss-video-el]");
-          var vidHost = gridPanel || sec.querySelector("[data-ss-video]");
-          var vStart = 0,
-            vEnd = 1;
 
           // Travel = how far the strip must move to reveal its last panel.
           // Pin duration is tied to that same distance so the horizontal
@@ -888,23 +880,6 @@
           var travel = 0;
           function measure() {
             travel = Math.max(strip.scrollWidth - window.innerWidth, 0);
-            if (vidEl && vidHost && travel > 0) {
-              // refreshInit fires with the strip transform reset to 0, so
-              // these rects are the untranslated layout positions. Scrub
-              // the clip across the whole stretch where the grid panel
-              // owns the viewport (the video tile sits at the very end of
-              // the strip, so keying off the tile itself gave a useless
-              // ~3%-wide window).
-              var pr = vidHost.getBoundingClientRect();
-              var sr = strip.getBoundingClientRect();
-              var leftX = pr.left - sr.left;
-              var vw = window.innerWidth;
-              vStart = Math.max(
-                0,
-                Math.min(0.9, (leftX - 0.75 * vw) / travel)
-              );
-              vEnd = 0.99;
-            }
           }
           measure();
           if (travel <= 0) return; // strip already fits — nothing to scrub.
@@ -932,15 +907,6 @@
               onUpdate: function (self) {
                 if (progressBar) {
                   progressBar.style.transform = "scaleX(" + self.progress + ")";
-                }
-                var d = vidEl && vidEl.duration;
-                if (d && isFinite(d)) {
-                  var p = (self.progress - vStart) / (vEnd - vStart);
-                  p = p < 0 ? 0 : p > 1 ? 1 : p;
-                  var t = p * d;
-                  if (Math.abs(vidEl.currentTime - t) > 0.015) {
-                    vidEl.currentTime = t;
-                  }
                 }
               },
             },
@@ -970,8 +936,6 @@
                 });
               },
             });
-            // (the video tile in this grid is scroll-scrubbed off the pin's
-            //  own onUpdate — see the hTween scrollTrigger above)
           }
         });
 
@@ -1316,6 +1280,50 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !lb.hidden) closeLb();
     });
+  });
+})();
+
+/* ============================================================
+   Dex "logo in motion" tile: the clip loops while it's on screen
+   and pauses when it isn't. autoplay+loop on the element covers
+   most browsers; this also (re)starts playback after visibility
+   changes and honours reduced-motion.
+   ============================================================ */
+(function () {
+  "use strict";
+  var vid = document.querySelector(".mgrid__video");
+  if (!vid) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    vid.removeAttribute("autoplay");
+    vid.removeAttribute("loop");
+    try {
+      vid.pause();
+    } catch (e) {}
+    return;
+  }
+
+  var tryPlay = function () {
+    var p = vid.play();
+    if (p && p.catch) p.catch(function () {});
+  };
+
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) tryPlay();
+          else vid.pause();
+        });
+      },
+      { threshold: 0.15 }
+    ).observe(vid);
+  } else {
+    tryPlay();
+  }
+  // some engines drop muted-autoplay until a user gesture / first paint
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) tryPlay();
   });
 })();
 
