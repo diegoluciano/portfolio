@@ -1347,6 +1347,10 @@ body.work-solid .topbar__cta:focus-visible {
 .mgrid__item--tall {
   grid-row: span 3;
 }
+.mgrid__item--wide {
+  grid-column: 1 / -1;
+  grid-row: span 2;
+}
 .mgrid__btn,
 .mgrid__video-frame {
   display: block;
@@ -1428,12 +1432,17 @@ body.work-solid .topbar__cta:focus-visible {
     grid-auto-rows: auto;
   }
   .mgrid__item,
-  .mgrid__item--tall {
+  .mgrid__item--tall,
+  .mgrid__item--wide {
     grid-row: auto;
+    grid-column: auto;
   }
   .mgrid__btn {
     height: auto;
     aspect-ratio: 4 / 5;
+  }
+  .mgrid__item--wide .mgrid__btn {
+    aspect-ratio: 16 / 9;
   }
   .mgrid__cap {
     opacity: 1;

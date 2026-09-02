@@ -1222,9 +1222,8 @@
 (function () {
   "use strict";
   document.addEventListener("DOMContentLoaded", function () {
-    var grid = document.querySelector("[data-mgrid]");
     var lb = document.querySelector("[data-lb]");
-    if (!grid || !lb) return;
+    if (!lb || !document.querySelector("[data-mgrid]")) return;
 
     var lbImg = lb.querySelector(".lightbox__img");
     var lbCap = lb.querySelector(".lightbox__cap");
@@ -1268,9 +1267,10 @@
       }
     }
 
-    grid.addEventListener("click", function (e) {
+    // delegated so it covers every .mgrid on the page (Dex, Volp, …)
+    document.addEventListener("click", function (e) {
       var btn = e.target.closest(".mgrid__btn");
-      if (!btn) return;
+      if (!btn || !btn.closest("[data-mgrid]")) return;
       openLb(btn.getAttribute("data-lb-src"), btn.getAttribute("data-lb-cap"));
     });
     closeBtn.addEventListener("click", closeLb);
