@@ -1335,51 +1335,48 @@ body.work-solid .topbar__cta:focus-visible {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  /* vh-based so the whole grid always fits inside the pinned 100vh panel,
-     regardless of viewport height */
-  grid-auto-rows: clamp(3.4rem, 7.2vh, 6.5rem);
-  grid-auto-flow: row dense;
-  gap: clamp(0.4rem, 1vw, 0.75rem);
+  gap: clamp(0.3rem, 0.7vw, 0.55rem);
 }
 .mgrid__item {
-  grid-row: span 2;
+  min-width: 0;
 }
-.mgrid__item--tall {
-  grid-row: span 3;
-}
+/* full-width row for the odd landscape shot (e.g. an e-commerce screen);
+   --tall is kept as a harmless no-op so old markup still lays out cleanly */
 .mgrid__item--wide {
   grid-column: 1 / -1;
-  grid-row: span 2;
 }
 .mgrid__btn,
 .mgrid__video-frame {
   display: block;
   width: 100%;
-  height: 100%;
+  aspect-ratio: 3 / 2;
   margin: 0;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 4px;
   overflow: hidden;
   background: var(--bg-soft);
   position: relative;
+}
+.mgrid__item--wide .mgrid__btn,
+.mgrid__item--wide .mgrid__video-frame {
+  aspect-ratio: 24 / 7;
 }
 .mgrid__btn {
   cursor: pointer;
   transition: transform 0.35s ease, border-color 0.35s ease;
 }
-.mgrid__btn img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.55s ease;
-}
+.mgrid__btn img,
 .mgrid__video {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.mgrid__btn img {
+  transition: transform 0.55s ease;
 }
 .mgrid__video-frame .mgrid__cap {
   opacity: 1;
@@ -1423,26 +1420,18 @@ body.work-solid .topbar__cta:focus-visible {
   }
   .mgrid {
     grid-template-columns: repeat(2, 1fr);
-    grid-auto-rows: clamp(3.4rem, 6.5vh, 5.5rem);
   }
 }
 @media (max-width: 520px) {
   .mgrid {
     grid-template-columns: 1fr;
-    grid-auto-rows: auto;
   }
-  .mgrid__item,
-  .mgrid__item--tall,
   .mgrid__item--wide {
-    grid-row: auto;
     grid-column: auto;
   }
-  .mgrid__btn {
-    height: auto;
-    aspect-ratio: 4 / 5;
-  }
-  .mgrid__item--wide .mgrid__btn {
-    aspect-ratio: 16 / 9;
+  .mgrid__item--wide .mgrid__btn,
+  .mgrid__item--wide .mgrid__video-frame {
+    aspect-ratio: 3 / 2;
   }
   .mgrid__cap {
     opacity: 1;
