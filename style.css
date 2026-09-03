@@ -366,7 +366,7 @@ body.work-solid .topbar__cta:focus-visible {
      cutting on a hard sticky edge. --ss-progress is 0→1 across the hero
      (script.js). The particle canvas is fixed on top, so it carries
      across the seam and the transition reads as continuous. */
-  opacity: calc(1 - clamp(0, (var(--ss-progress, 0) - 0.8) * 5.5, 1));
+  opacity: calc(1 - clamp(0, (var(--ss-progress, 0) - 0.62) * 3.7, 1));
   will-change: opacity;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -518,6 +518,13 @@ body.work-solid .topbar__cta:focus-visible {
   position: relative;
 }
 
+/* How much vertical scroll the hero push-in consumes (this band drives
+   --ss-progress / video currentTime). Shorter on phones — 2.4 screens of
+   scrolling past a mostly-static title is too much on a thumb. */
+#intro.scroll-scrub__chapter {
+  min-height: 240dvh;
+}
+
 .scroll-scrub__chapter-pin {
   position: sticky;
   top: 0;
@@ -628,6 +635,10 @@ body.work-solid .topbar__cta:focus-visible {
 }
 
 @media (max-width: 860px) {
+  #intro.scroll-scrub__chapter {
+    min-height: 135dvh;
+  }
+
   .scroll-scrub__poster,
   .scroll-scrub__video {
     object-position: var(--ss-mobile-position);
@@ -1305,6 +1316,103 @@ body.work-solid .topbar__cta:focus-visible {
   .hg-shot__frame img {
     animation: none !important;
     transform: none !important;
+  }
+}
+
+/* ---- Phones: the horizontal "film" doesn't work with a thumb — a swipe
+   strip with content off to the right is undiscoverable and fights the
+   page scroll. Below the pin breakpoint (JS uses 768) every gallery
+   becomes a plain vertical stack: intro block, then its images one under
+   another. Native scroll, nothing hidden off-screen. ---- */
+@media (max-width: 767px) {
+  .horiz-gallery-wrapper,
+  .hg-enhanced .horiz-gallery-wrapper {
+    height: auto;
+    overflow: visible;
+    padding: clamp(3rem, 9vw, 4.5rem) 0;
+  }
+  .horiz-gallery-strip {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: clamp(1.75rem, 7vw, 3rem);
+  }
+  .hg-panel,
+  .hg-panel--intro,
+  .hg-panel--image,
+  .hg-panel--shot,
+  .hg-panel--grid {
+    width: 100% !important;
+    min-height: 0;
+    padding: 0 clamp(1.25rem, 5vw, 1.75rem);
+  }
+  .hg-panel--intro {
+    display: block;
+  }
+  .hg-title {
+    max-width: 18ch;
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+  .hg-next {
+    display: none;
+  }
+  .hg-progress {
+    display: none;
+  }
+  /* Drop the browser-chrome crop on phones: a 288px window onto a
+     3000px-tall catalog shows ~9% of the work and the drag-to-scrub
+     that reveals the rest fights thumb scroll. Un-clip it — the whole
+     creative flows at natural height under native page scroll. */
+  .hg-shot,
+  .hg-shot.is-fitted {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: auto;
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .hg-shot__chrome {
+    display: none;
+  }
+  .hg-shot__frame,
+  .hg-shot.is-draggable .hg-shot__frame {
+    position: static;
+    inset: auto;
+    overflow: visible;
+    cursor: default;
+    touch-action: auto;
+  }
+  .hg-shot__frame img,
+  .hg-shot.is-draggable .hg-shot__frame img {
+    position: static;
+    width: 100%;
+    height: auto;
+    animation: none !important;
+    transform: none !important;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .hg-shot__caption {
+    position: static;
+    opacity: 1;
+    margin: 0.6rem 0 0;
+    left: auto;
+    bottom: auto;
+    text-shadow: none;
+  }
+  .mgrid {
+    grid-template-columns: 1fr;
+  }
+  .mgrid__item--wide .mgrid__btn,
+  .mgrid__item--wide .mgrid__video-frame {
+    aspect-ratio: 3 / 2;
+  }
+  .mgrid__cap {
+    opacity: 1;
+    transform: none;
   }
 }
 
