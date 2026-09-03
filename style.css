@@ -1403,17 +1403,9 @@ body.work-solid .topbar__cta:focus-visible {
     bottom: auto;
     text-shadow: none;
   }
-  .mgrid {
-    grid-template-columns: 1fr;
-  }
-  .mgrid__item--wide .mgrid__btn,
-  .mgrid__item--wide .mgrid__video-frame {
-    aspect-ratio: 3 / 2;
-  }
-  .mgrid__cap {
-    opacity: 1;
-    transform: none;
-  }
+  /* .mgrid on phones (1 column, captions shown) is handled by a
+     max-width:767px block placed after the .mgrid component rules —
+     see further down. Putting it here loses to the later base rule. */
 }
 
 /* ============================================================
@@ -1452,6 +1444,13 @@ body.work-solid .topbar__cta:focus-visible {
    --tall is kept as a harmless no-op so old markup still lays out cleanly */
 .mgrid__item--wide {
   grid-column: 1 / -1;
+}
+/* Creative Lab has 4 wide full-app screenshots — a clean 2x2 reads better
+   than 3 + 1 orphan. Mobile still collapses to 1 col (block further down). */
+@media (min-width: 768px) {
+  #hg-creative-lab .mgrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 .mgrid__btn,
 .mgrid__video-frame {
@@ -1522,7 +1521,7 @@ body.work-solid .topbar__cta:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-@media (max-width: 860px) {
+@media (min-width: 768px) and (max-width: 860px) {
   .hg-panel--grid {
     width: min(90vw, 34rem);
   }
@@ -1530,7 +1529,11 @@ body.work-solid .topbar__cta:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (max-width: 520px) {
+/* Phones (the galleries are a vertical stack here): one column, captions
+   always shown. Placed after the .mgrid component rules so it wins the
+   cascade — a max-width block earlier in the file would be overridden by
+   the base grid-template-columns further down. */
+@media (max-width: 767px) {
   .mgrid {
     grid-template-columns: 1fr;
   }
