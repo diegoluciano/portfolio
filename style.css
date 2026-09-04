@@ -285,15 +285,20 @@ a {
   transition: color 0.3s ease, border-color 0.3s ease,
     background-color 0.3s ease, transform 0.25s ease;
 }
-body.work-solid .topbar {
+body.work-solid .topbar,
+body.more-work-solid .topbar {
   mix-blend-mode: normal;
 }
 body.work-solid .topbar__logo,
 body.work-solid .topbar__logo-mark,
-body.work-solid .topbar__cta {
+body.work-solid .topbar__cta,
+body.more-work-solid .topbar__logo,
+body.more-work-solid .topbar__logo-mark,
+body.more-work-solid .topbar__cta {
   color: #05070a;
 }
-body.work-solid .topbar__cta {
+body.work-solid .topbar__cta,
+body.more-work-solid .topbar__cta {
   border-color: #05070a;
 }
 
@@ -306,9 +311,12 @@ body.work-solid .topbar__cta {
   outline: none;
 }
 
-/* on the emerald Work section, invert to a dark fill so the hover reads */
+/* on a solid-emerald section (Work, More work), invert to a dark fill so
+   the hover reads */
 body.work-solid .topbar__cta:hover,
-body.work-solid .topbar__cta:focus-visible {
+body.work-solid .topbar__cta:focus-visible,
+body.more-work-solid .topbar__cta:hover,
+body.more-work-solid .topbar__cta:focus-visible {
   border-color: #05070a;
   background-color: #05070a;
   color: #28f2a4;
@@ -1738,22 +1746,177 @@ body.work-solid .topbar__cta:focus-visible {
 }
 
 /* ============================================================
-   More work — link out to the full project list
+   More work — scroll-locked teaser gallery + link out to the full
+   project list. Built on the same [data-hg] pin/scrub mechanism as
+   the case-study galleries (see "Work — horizontal scroll-scrub
+   galleries" above); .more-work only adds the scanner-wipe skin.
    ============================================================ */
 .more-work {
-  border-top: 1px solid var(--line);
+  position: relative;
+  isolation: isolate;
 }
 
-.more-work__inner {
+.hg-panel--more-intro {
+  width: min(90vw, 34rem);
+  padding-left: clamp(1.5rem, 6vw, 6rem);
+}
+
+.hg-title--more {
+  max-width: 16ch;
+}
+
+/* Large teaser cards — noticeably bigger than the case-study .hg-panel--shot
+   (min(46vw,30rem)); this is a quick showcase, not a deep dive, so each card
+   gets real visual weight. Whole panel is the link (opens in a new page). */
+.hg-panel--card {
+  width: min(62vw, 46rem);
+  color: inherit;
+  text-decoration: none;
+}
+
+.hg-card__frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.hg-panel--card:hover .hg-card__frame {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.hg-panel--card .hg-placeholder {
+  position: absolute;
+  inset: 0;
+}
+
+.hg-card__cap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.hg-card__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.hg-card__meta {
+  flex: 0 0 auto;
+  color: var(--muted-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hg-panel--more-cta {
+  width: min(60vw, 26rem);
+  align-items: center;
   text-align: center;
 }
 
-.more-work .section__title {
-  margin-top: 0.5rem;
+/* Same scanner-wipe treatment as #work — fx.js drives --more-work-reveal
+   0→1 as the section scrolls in and toggles body.more-work-solid for the
+   text flip, using the last gallery's progress bar as the visual handoff
+   (it finishes right at this section's top edge). */
+#more-work::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #28f2a4;
+  clip-path: inset(0 0 calc((1 - var(--more-work-reveal, 0)) * 100%) 0);
+  pointer-events: none;
 }
-
-.more-work .btn-outline {
-  margin-top: 2rem;
+#more-work > * {
+  position: relative;
+  z-index: 1;
+}
+#more-work::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--more-work-reveal, 0) * 100%);
+  height: 2px;
+  margin-top: -1px;
+  z-index: 2;
+  background: #b8ffe4;
+  opacity: var(--more-work-glow, 0);
+  box-shadow:
+    0 0 14px 2px rgba(40, 242, 164, 0.95),
+    0 0 46px 12px rgba(40, 242, 164, 0.55),
+    0 0 120px 40px rgba(40, 242, 164, 0.25);
+  pointer-events: none;
+}
+#more-work .hg-eyebrow,
+#more-work .hg-eyebrow::before,
+#more-work .hg-title,
+#more-work .hg-card__frame,
+#more-work .hg-card__title,
+#more-work .hg-card__meta,
+#more-work .btn-outline {
+  transition: color 0.4s ease, border-color 0.4s ease, background-color 0.4s ease;
+}
+body.more-work-solid #more-work .hg-eyebrow,
+body.more-work-solid #more-work .hg-title,
+body.more-work-solid #more-work .hg-card__title,
+body.more-work-solid #more-work .hg-card__meta {
+  color: #05070a;
+}
+body.more-work-solid #more-work .hg-eyebrow::before {
+  background-color: #05070a;
+}
+body.more-work-solid #more-work .hg-card__frame {
+  border-color: rgba(5, 7, 10, 0.35);
+}
+body.more-work-solid #more-work .hg-placeholder {
+  border-color: rgba(5, 7, 10, 0.35);
+  color: rgba(5, 7, 10, 0.6);
+}
+body.more-work-solid #more-work .btn-outline {
+  color: #05070a;
+  border-color: #05070a;
+}
+body.more-work-solid #more-work .btn-outline:hover,
+body.more-work-solid #more-work .btn-outline:focus-visible {
+  border-color: #05070a;
+  background-color: #05070a;
+  color: #28f2a4;
+}
+@media (prefers-reduced-motion: reduce) {
+  #more-work::before {
+    clip-path: none;
+  }
+  #more-work::after {
+    display: none;
+  }
+  #more-work .hg-eyebrow,
+  #more-work .hg-title,
+  #more-work .hg-card__title,
+  #more-work .hg-card__meta {
+    color: #05070a;
+  }
+  #more-work .hg-eyebrow::before {
+    background-color: #05070a;
+  }
+  #more-work .hg-card__frame,
+  #more-work .hg-placeholder {
+    border-color: rgba(5, 7, 10, 0.35);
+  }
+  #more-work .btn-outline {
+    color: #05070a;
+    border-color: #05070a;
+  }
 }
 
 .btn-outline {

@@ -3,8 +3,8 @@
    behind the page, that transmorphs formation by formation as
    the content scrolls:
 
-     hero      → neural cloud (clustered nodes; the centre is
-                 kept clear for the portrait)
+     hero      → drifting emerald fog that materialises into a floor
+                 pool of points as the visitor nears the next section
      stats     → data grid / lattice
      pillars   → three columns
      work      → a flowing stream
@@ -59,6 +59,7 @@
     "uniform float uKeep;",     // 0..1 fraction of the field kept (thinned past the hero)
     "uniform float uLineOn;",   // 1 when the field is the horizontal scan line
     "uniform float uLineDrop;", // world units the line has descended from the seam
+    "uniform float uFogT;",     // 0 at hero top (all fog, no points) .. 1 by the time stats nears (fully materialised)
     "varying float vBright;",
     "varying float vFade;",
     "float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }",
@@ -103,12 +104,16 @@
     "  }",
     "  vec4 view = vec4(pos.x, pos.y, pos.z - 4.0, 1.0);",
     "  gl_Position = uProj * view;",
-    "  vec2 scr = gl_Position.xy / max(gl_Position.w, 0.0001);",
-    // tight ellipse hugging the portrait (upper-centre) — hero only
-    "  float centre = length((scr - vec2(0.0, 0.16)) / vec2(0.30, 0.52));",
-    "  float clearAmt = (1.0 - smoothstep(0.55, 1.05, centre)) * uHero;",
     "  float twinkle = 0.58 + 0.42 * sin(uTime * 1.7 + aRnd.x * 34.0);",
-    "  vFade = (1.0 - clearAmt) * twinkle;",
+    // materialise out of the fog: each hero point has its own random reveal
+    // threshold (aRnd.x, already used as a phase elsewhere) so they crystallise
+    // in a staggered scatter as uFogT climbs, rather than popping in together —
+    // reads as points condensing out of the mist. No-op outside the hero.
+    // (there used to also be a fixed ellipse clearing the portrait here —
+    // removed 2026-09-04, it read as the same "cutout" Diego kept rejecting;
+    // the fog + staggered reveal already keeps the hero from feeling crowded)
+    "  float reveal = smoothstep(aRnd.x - 0.12, aRnd.x + 0.12, uFogT);",
+    "  vFade = twinkle * mix(1.0, reveal, uHero);",
     "  vBright = 0.4 + 1.0 * aRnd.z + react * 0.5 + uLineOn * 0.6;", // the scan line glows
     "  gl_PointSize = clamp(uSize * (2.6 + 4.4 * aRnd.y) * (1.0 + 0.35 * uLineOn) * " + DPR.toFixed(3) + ", 1.5, 120.0);",
     "}",
@@ -179,6 +184,7 @@
     uKeep: gl.getUniformLocation(prog, "uKeep"),
     uLineOn: gl.getUniformLocation(prog, "uLineOn"),
     uLineDrop: gl.getUniformLocation(prog, "uLineDrop"),
+    uFogT: gl.getUniformLocation(prog, "uFogT"),
   };
   gl.uniform3f(loc.uColor, 0.157, 0.949, 0.643); // #28f2a4
   gl.uniform1f(loc.uAlpha, reduce ? 0.4 : 0.85);
@@ -225,6 +231,122 @@
   }
   bindAttribs();
 
+  // ---- fog pass: a full-screen quad behind the points, hero only --------
+  // What the field looks like before it has anything to be discrete about:
+  // a drifting, domain-warped noise field standing in for the emerald mist
+  // already implied by the video's floor glow. It fades out (uFogAlpha) at
+  // the same rate uFogT climbs and the points fade in (see VERT), so the
+  // page reads as "the mist condenses into the particle field" rather than
+  // a hard cut between two unrelated effects.
+  var FOG_VERT = [
+    "precision highp float;",
+    "attribute vec2 aPos;",
+    "void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }",
+  ].join("\n");
+
+  var FOG_FRAG = [
+    "precision highp float;",
+    "uniform vec2 uResolution;",
+    "uniform float uTime;",
+    "uniform float uFogAlpha;", // 0..1 overall visibility
+    "uniform vec3 uColor;",
+    "float hash(vec2 p){",
+    "  p = fract(p * vec2(123.34, 456.21));",
+    "  p += dot(p, p + 45.32);",
+    "  return fract(p.x * p.y);",
+    "}",
+    "float vnoise(vec2 p){",
+    "  vec2 i = floor(p), f = fract(p);",
+    "  f = f * f * (3.0 - 2.0 * f);",
+    "  float a = hash(i), b = hash(i + vec2(1.0, 0.0));",
+    "  float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));",
+    "  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);",
+    "}",
+    "float fbm(vec2 p){",
+    "  float v = 0.0, amp = 0.55;",
+    "  for (int k = 0; k < 5; k++){",
+    "    v += amp * vnoise(p);",
+    "    p = p * 2.03 + vec2(11.0, -7.0);",
+    "    amp *= 0.55;",
+    "  }",
+    "  return v;",
+    "}",
+    "void main(){",
+    "  vec2 uv = gl_FragCoord.xy / uResolution;", // y=0 at the bottom of the frame
+    // coarse, large-scale structure (mist reads as a few big soft masses,
+    // not many small ones) — the fbm octaves still add fine texture on top
+    "  vec2 p = vec2(uv.x * 1.6, uv.y * 1.3);",
+    "  vec2 drift = vec2(uTime * 0.03, -uTime * 0.018);",
+    "  vec2 warp = vec2(fbm(p * 1.1 + drift), fbm(p * 1.1 - drift + 9.2));",
+    "  float n = fbm(p + warp * 0.8 + drift);", // 0..~1 texture, gentler warp
+    // wide pool low in frame, shallow convex top edge (mirrors fFloorBand's
+    // shape) — present across the FULL width by default; noise only
+    // textures its intensity, it never gates the band off entirely, so
+    // this reads as one continuous mist instead of a narrow flame-like peak
+    "  float cx = (uv.x - 0.5) * 2.0;",
+    "  float topEdge = 0.72 - cx * cx * 0.2;",
+    "  float band = 1.0 - smoothstep(topEdge - 0.7, topEdge, uv.y);",
+    "  float density = band * mix(0.65, 1.0, n);",
+    // additive blend (screen-composited on the page) needs a strong signal
+    // to read as dense/opaque rather than a faint wash — push both alpha
+    // and colour brightness up in the denser regions
+    "  float alpha = density * uFogAlpha;",
+    "  vec3 col = uColor * (0.8 + 0.55 * density);",
+    "  gl_FragColor = vec4(col, alpha);",
+    "}",
+  ].join("\n");
+
+  var fogProg = null;
+  var fogLoc = null;
+  var bFogPos = null;
+  (function initFog() {
+    var fvs = compile(gl.VERTEX_SHADER, FOG_VERT);
+    var ffs = compile(gl.FRAGMENT_SHADER, FOG_FRAG);
+    if (!fvs || !ffs) return; // fog is a nice-to-have; points still work without it
+    var fp = gl.createProgram();
+    gl.attachShader(fp, fvs);
+    gl.attachShader(fp, ffs);
+    gl.linkProgram(fp);
+    if (!gl.getProgramParameter(fp, gl.LINK_STATUS)) {
+      console.warn("fx fog link:", gl.getProgramInfoLog(fp));
+      return;
+    }
+    fogProg = fp;
+    fogLoc = {
+      aPos: gl.getAttribLocation(fp, "aPos"),
+      uResolution: gl.getUniformLocation(fp, "uResolution"),
+      uTime: gl.getUniformLocation(fp, "uTime"),
+      uFogAlpha: gl.getUniformLocation(fp, "uFogAlpha"),
+      uColor: gl.getUniformLocation(fp, "uColor"),
+    };
+    // one big triangle covering the whole clip space — no seam down the
+    // middle like a two-triangle quad, and one less vertex to submit
+    bFogPos = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, bFogPos);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 3, -1, -1, 3]),
+      gl.STATIC_DRAW
+    );
+    gl.useProgram(fogProg);
+    gl.uniform3f(fogLoc.uColor, 0.157, 0.949, 0.643); // #28f2a4, same as the points
+    gl.useProgram(prog);
+  })();
+
+  function drawFog(fogAlpha) {
+    if (!fogProg || fogAlpha <= 0.002) return;
+    gl.useProgram(fogProg);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bFogPos);
+    gl.enableVertexAttribArray(fogLoc.aPos);
+    gl.vertexAttribPointer(fogLoc.aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform2f(fogLoc.uResolution, canvas.width, canvas.height);
+    gl.uniform1f(fogLoc.uTime, uTime);
+    gl.uniform1f(fogLoc.uFogAlpha, fogAlpha);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.useProgram(prog);
+    bindAttribs();
+  }
+
   // ---- projection (perspective, fov 45) --------------------------
   var proj = new Float32Array(16);
   function setProj(aspect) {
@@ -258,6 +380,12 @@
   // fill from that edge downward into and past the bottom of frame, densest
   // near the glowing edge and thinning toward the floor. Reads as a
   // continuation of the video's green floor, not a traced line.
+  // (2026-09-04: a rough silhouette cutout was tried here so the pool would
+  // "avoid" Diego — rejected, read as fake, and drifted out of alignment at
+  // narrower viewports since the oval is sized in world units while his
+  // on-screen position comes from object-fit crop. Replaced by the fog→
+  // particle materialisation below: the field simply isn't discrete points
+  // yet while it's near him, so there's nothing to misalign.)
   function fFloorBand(a) {
     for (var p = 0; p < COUNT; p++) {
       // spread across (a touch beyond) the full width, softly centre-weighted
@@ -373,6 +501,7 @@
 
   // ---- scroll → morph + opacity envelope ---------------------
   var workEl = document.getElementById("work");
+  var moreWorkEl = document.getElementById("more-work");
   var marks = {
     stats: Infinity,
     pillars: Infinity,
@@ -421,6 +550,14 @@
     if (!workEl) return 0;
     var vpH = window.innerHeight;
     var t = workEl.getBoundingClientRect().top;
+    return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
+  }
+  // Same scanner, reused for #more-work — the emerald wipe picks up again
+  // where the last gallery's progress bar leaves off.
+  function scanForMoreWork() {
+    if (!moreWorkEl) return 0;
+    var vpH = window.innerHeight;
+    var t = moreWorkEl.getBoundingClientRect().top;
     return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
   }
   // global visibility — lit through the scan-line sweep, then GONE by the time
@@ -532,6 +669,18 @@
     var hero = Math.max(0, 1 - Math.abs(mDisp - IDX.floor)); // 1 at the hero band, 0 elsewhere
     var y = window.__lenis ? window.__lenis.scroll : window.scrollY || window.pageYOffset;
 
+    // fog → particles: pure mist for the whole hero — the field only starts
+    // materialising once the visitor is leaving the hero for stats, in step
+    // with the existing floor→grid shape morph (morphFor blends those over
+    // the same [marks.stats - vh, marks.stats] window), and finishes a
+    // little into the stats section so it's already settled into today's
+    // look by the time the visitor is reading the numbers. Skipped under
+    // reduced-motion — fogT pinned at 1 so that path is unchanged.
+    var vh = window.innerHeight;
+    var fogStart = marks.stats - vh;
+    var fogEnd = marks.stats + vh * 0.75;
+    var fogT = reduce ? 1 : smooth(fogStart, Math.max(fogStart + 1, fogEnd), y);
+
     // emerald scanner: drive #work's reveal and walk the particle line down
     // the screen with its leading edge
     var reveal = scanFor();
@@ -561,6 +710,28 @@
     );
     if (reveal * (1 - offWork) > 0.35) document.body.classList.add("work-solid");
     else document.body.classList.remove("work-solid");
+
+    // same emerald scanner again at #more-work, picking up where the last
+    // gallery's progress bar leaves off. #more-work is now a full pinned
+    // gallery (title → cards → CTA), so — same as #work/offWork — the
+    // release has to be anchored to the NEXT section (#finale), not to
+    // #more-work's own start: anchoring off marks.revive (its top) was
+    // firing the release ~0.3-0.9vh into a pin that runs for several
+    // viewport-heights, flipping the text back to light while the card
+    // slider (and the CTA button after it) were still solid green.
+    var reveal2 = scanForMoreWork();
+    if (moreWorkEl) {
+      moreWorkEl.style.setProperty("--more-work-reveal", reveal2.toFixed(4));
+      var glow2 = Math.max(0, Math.min(1, Math.min(reveal2 * 7, (1 - reveal2) * 7)));
+      moreWorkEl.style.setProperty("--more-work-glow", glow2.toFixed(4));
+    }
+    var offMoreWork = smooth(
+      marks.finale - window.innerHeight * 0.5,
+      marks.finale + window.innerHeight * 0.1,
+      y
+    );
+    if (reveal2 * (1 - offMoreWork) > 0.35) document.body.classList.add("more-work-solid");
+    else document.body.classList.remove("more-work-solid");
     // hard guarantee: the canvas is not even composited once the line has swept
     // past, through the galleries, until the finale
     canvas.style.visibility =
@@ -579,8 +750,15 @@
     gl.uniform1f(loc.uOpacity, oDisp);
     gl.uniform1f(loc.uTime, uTime);
     gl.uniform1f(loc.uSpin, uSpin);
+    gl.uniform1f(loc.uFogT, fogT);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    // fog first (it's the backdrop the points condense out of), then points.
+    // Driven by fogT alone, not the hero gate — hero collapses to 0 as soon
+    // as mDisp reaches IDX.grid (right at marks.stats), which would cut the
+    // fog off before fogT (deliberately stretched past marks.stats) finishes
+    // fading it — the whole point is letting it linger into the next section.
+    drawFog((1 - fogT) * oDisp);
     gl.drawArrays(gl.POINTS, 0, COUNT);
   }
 
