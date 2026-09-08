@@ -542,23 +542,28 @@
       return IDX.line + smooth(w + vh * 0.1, w + vh * 0.5, y); // line → scatter, after the sweep
     return IDX.scatter + smooth(marks.revive - vh * 0.4, marks.finale, y); // scatter → stars
   }
-  // Emerald "scanner" reveal for #work: 0 = hidden, 1 = fully green. Runs from
-  // work's top ~55% down the viewport to ~5% down (~half a viewport of scroll),
-  // so it completes well before the first gallery pins. Reads the live rect so
-  // it scrubs cleanly both directions.
-  function scanFor() {
-    if (!workEl) return 0;
+  // Emerald "scanner" reveal for #work / #more-work: 0 = hidden, 1 = fully
+  // green. On desktop (body.scanner-pinned) script.js pins the section and
+  // drives --work-reveal / --more-work-reveal off the pin's scrub progress —
+  // a real scroll brake so the wipe can't blink past at speed — and this
+  // just reads that value back (fx.js still needs it for the particle
+  // scan-line + the field's opacity envelope). Without the pin (mobile /
+  // reduced-motion) it falls back to computing from the live rect.
+  function readReveal(el, cssVar) {
+    if (document.body.classList.contains("scanner-pinned")) {
+      return (
+        parseFloat(getComputedStyle(el).getPropertyValue(cssVar)) || 0
+      );
+    }
     var vpH = window.innerHeight;
-    var t = workEl.getBoundingClientRect().top;
-    return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
+    var t = el.getBoundingClientRect().top;
+    return Math.max(0, Math.min(1, (1.05 * vpH - t) / (1.5 * vpH)));
   }
-  // Same scanner, reused for #more-work — the emerald wipe picks up again
-  // where the last gallery's progress bar leaves off.
+  function scanFor() {
+    return workEl ? readReveal(workEl, "--work-reveal") : 0;
+  }
   function scanForMoreWork() {
-    if (!moreWorkEl) return 0;
-    var vpH = window.innerHeight;
-    var t = moreWorkEl.getBoundingClientRect().top;
-    return Math.max(0, Math.min(1, (0.55 * vpH - t) / (0.5 * vpH)));
+    return moreWorkEl ? readReveal(moreWorkEl, "--more-work-reveal") : 0;
   }
   // global visibility — lit through the scan-line sweep, then GONE by the time
   // the wipe reaches the base of #work (fade across the last third of the
@@ -682,9 +687,12 @@
     var fogT = reduce ? 1 : smooth(fogStart, Math.max(fogStart + 1, fogEnd), y);
 
     // emerald scanner: drive #work's reveal and walk the particle line down
-    // the screen with its leading edge
+    // the screen with its leading edge. When the section is pinned (desktop,
+    // body.scanner-pinned) script.js owns --work-reveal / --scan-glow off
+    // the pin scrub — we only write them here on the no-pin fallback path.
+    var scannerPinned = document.body.classList.contains("scanner-pinned");
     var reveal = scanFor();
-    if (workEl) {
+    if (workEl && !scannerPinned) {
       workEl.style.setProperty("--work-reveal", reveal.toFixed(4));
       // glow bar on the wipe edge — fades in over the first slice of the scan
       // and out as it lands on the base
@@ -720,7 +728,7 @@
     // viewport-heights, flipping the text back to light while the card
     // slider (and the CTA button after it) were still solid green.
     var reveal2 = scanForMoreWork();
-    if (moreWorkEl) {
+    if (moreWorkEl && !scannerPinned) {
       moreWorkEl.style.setProperty("--more-work-reveal", reveal2.toFixed(4));
       var glow2 = Math.max(0, Math.min(1, Math.min(reveal2 * 7, (1 - reveal2) * 7)));
       moreWorkEl.style.setProperty("--more-work-glow", glow2.toFixed(4));

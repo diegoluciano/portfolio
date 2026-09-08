@@ -117,16 +117,64 @@ body.pl-lock {
 #fx-field {
   transition: opacity 1s ease;
 }
-.scroll-scrub__layer video {
-  transition: filter 1.1s ease, opacity 1s ease;
-}
 html.js body.pl-loading .scroll-scrub__layer video {
-  filter: blur(24px);
   opacity: 0;
 }
 html.js body.pl-loading #fx-field,
 html.js body.pl-loading .scroll-scrub__poster {
   opacity: 0;
+}
+
+/* Hero film entrance — cinemascope bars retract: opens from a thin
+   widescreen slit as the letterbox bars slide apart, with a small scale
+   settle. Reads as "the film starting", never as a glitch. The clipped
+   area just shows the near-black stage behind, so no separate bar
+   elements are needed. Runs once when the loader drops .pl-loading.
+   Applied to .scroll-scrub__media so the stage vignette/grain stay put
+   and it composes with the layer's scroll push-in (a child transform).
+   No-JS / reduced-motion skip it (loader drops html.js in those paths). */
+html.js body:not(.pl-loading) .scroll-scrub__media {
+  /* slow + fairly even curve — an expo-out here does ~80% of the move in
+     the first fraction and reads as instant; this stays watchable */
+  animation: heroLetterboxIn 2.7s cubic-bezier(0.5, 0.08, 0.2, 1) 0.2s both;
+  will-change: transform, opacity, clip-path;
+}
+/* the film itself opens through a circular iris centred on the subject,
+   nested inside the retracting letterbox — the visible area is the
+   intersection of the two, so it reads as an iris-in within a widescreen
+   frame. clip-path here doesn't touch the layer's scroll push-in transform. */
+html.js body:not(.pl-loading) .scroll-scrub__layer {
+  animation: heroIrisIn 2.1s cubic-bezier(0.5, 0.08, 0.2, 1) 0.2s both;
+  will-change: clip-path;
+}
+@keyframes heroLetterboxIn {
+  0% {
+    opacity: 0;
+    clip-path: inset(38% 0 38% 0);
+    transform: scale(1.035);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: scale(1);
+  }
+}
+@keyframes heroIrisIn {
+  0% {
+    clip-path: circle(0% at 50% 34%);
+  }
+  100% {
+    clip-path: circle(150% at 50% 34%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js body:not(.pl-loading) .scroll-scrub__media,
+  html.js body:not(.pl-loading) .scroll-scrub__layer {
+    animation: none;
+  }
 }
 
 /* Work reveal — a full-width emerald "scanner" wipes #work from top to bottom
@@ -136,6 +184,14 @@ html.js body.pl-loading .scroll-scrub__poster {
   position: relative;
   isolation: isolate;
 }
+/* while the scanner pin holds #work at the top (script.js), fill the
+   viewport and centre the copy so the green wipe reads as a full-screen
+   moment, not a short band with empty page below it */
+body.scanner-pinned #work {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
 #work::before {
   content: "";
   position: absolute;
@@ -143,6 +199,9 @@ html.js body.pl-loading .scroll-scrub__poster {
   z-index: 0;
   background: #28f2a4;
   clip-path: inset(0 0 calc((1 - var(--work-reveal, 0)) * 100%) 0);
+  /* smooths a fast flick-scroll into a visible sweep instead of a jump —
+     the scrub still drives it, this just trails the target slightly */
+  transition: clip-path 0.35s ease-out;
   pointer-events: none;
 }
 #work > * {
@@ -162,6 +221,7 @@ html.js body.pl-loading .scroll-scrub__poster {
   z-index: 2;
   background: #b8ffe4;
   opacity: var(--scan-glow, 0);
+  transition: top 0.35s ease-out, opacity 0.35s ease-out;
   box-shadow:
     0 0 14px 2px rgba(40, 242, 164, 0.95),
     0 0 46px 12px rgba(40, 242, 164, 0.55),
@@ -185,6 +245,7 @@ body.work-solid #work .eyebrow::before {
 @media (prefers-reduced-motion: reduce) {
   #work::before {
     clip-path: none;
+    transition: none;
   }
   #work::after {
     display: none;
@@ -1835,6 +1896,7 @@ body.more-work-solid .topbar__cta:focus-visible {
   z-index: 0;
   background: #28f2a4;
   clip-path: inset(0 0 calc((1 - var(--more-work-reveal, 0)) * 100%) 0);
+  transition: clip-path 0.35s ease-out;
   pointer-events: none;
 }
 #more-work > * {
@@ -1852,6 +1914,7 @@ body.more-work-solid .topbar__cta:focus-visible {
   z-index: 2;
   background: #b8ffe4;
   opacity: var(--more-work-glow, 0);
+  transition: top 0.35s ease-out, opacity 0.35s ease-out;
   box-shadow:
     0 0 14px 2px rgba(40, 242, 164, 0.95),
     0 0 46px 12px rgba(40, 242, 164, 0.55),
@@ -1896,6 +1959,7 @@ body.more-work-solid #more-work .btn-outline:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   #more-work::before {
     clip-path: none;
+    transition: none;
   }
   #more-work::after {
     display: none;

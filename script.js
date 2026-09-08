@@ -866,6 +866,9 @@
       "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
       function () {
         document.body.classList.add("hg-enhanced");
+        // tells fx.js the scanner sections are pinned + scrubbed here, so it
+        // reads --work-reveal / --more-work-reveal back instead of driving them
+        document.body.classList.add("scanner-pinned");
         var measurers = [];
 
         wrappers.forEach(function (sec) {
@@ -873,6 +876,21 @@
           if (!strip) return;
           var progressBar = sec.querySelector(".hg-progress span");
           var gridPanel = sec.querySelector("[data-mgrid]");
+          // #more-work carries the emerald scanner wipe. Give its pin an
+          // extra "wipe zone" of scroll at the very start: the strip holds
+          // still while --more-work-reveal scrubs 0→1, so the wipe gets a
+          // fixed scroll budget (a real brake) before the cards move —
+          // fx.js reads --more-work-reveal back rather than driving it
+          // (body.scanner-pinned). Everything else is unchanged.
+          var isMoreWork = sec.id === "more-work";
+          function wipeZone() {
+            return isMoreWork ? Math.round(window.innerHeight * 0.9) : 0;
+          }
+          function setMWReveal(p) {
+            sec.style.setProperty("--more-work-reveal", p.toFixed(4));
+            var g = Math.max(0, Math.min(1, Math.min(p * 7, (1 - p) * 7)));
+            sec.style.setProperty("--more-work-glow", g.toFixed(4));
+          }
 
           // Travel = how far the strip must move to reveal its last panel.
           // Pin duration is tied to that same distance so the horizontal
@@ -882,15 +900,16 @@
             travel = Math.max(strip.scrollWidth - window.innerWidth, 0);
           }
           measure();
-          if (travel <= 0) return; // strip already fits — nothing to scrub.
+          if (travel <= 0 && !isMoreWork) return; // strip fits — nothing to scrub.
 
           ScrollTrigger.addEventListener("refreshInit", measure);
           measurers.push(measure);
 
-          var hTween = gsap.to(strip, {
-            x: function () {
+          var hTween = gsap.to(isMoreWork ? { v: 0 } : strip, {
+            x: isMoreWork ? undefined : function () {
               return -travel;
             },
+            v: isMoreWork ? 1 : undefined,
             ease: "none",
             scrollTrigger: {
               trigger: sec,
@@ -898,17 +917,36 @@
               scrub: 0.6,
               start: "top top",
               end: function () {
-                return "+=" + travel;
+                return "+=" + (travel + wipeZone());
               },
               // Lower than the stats/pillars pins above so their
               // spacers are measured first on every refresh.
               refreshPriority: 1,
               invalidateOnRefresh: true,
               onUpdate: function (self) {
+                var p = self.progress;
+                if (isMoreWork) {
+                  var total = travel + wipeZone();
+                  var wf = total > 0 ? wipeZone() / total : 0;
+                  var wipe = wf > 0 ? Math.min(1, p / wf) : 1;
+                  var stripP = wf < 1 ? Math.max(0, (p - wf) / (1 - wf)) : 0;
+                  gsap.set(strip, { x: -stripP * travel });
+                  setMWReveal(wipe);
+                }
                 if (progressBar) {
-                  progressBar.style.transform = "scaleX(" + self.progress + ")";
+                  progressBar.style.transform = "scaleX(" + p + ")";
                 }
               },
+              onLeave: isMoreWork
+                ? function () {
+                    setMWReveal(1);
+                  }
+                : undefined,
+              onLeaveBack: isMoreWork
+                ? function () {
+                    setMWReveal(0);
+                  }
+                : undefined,
             },
           });
 
@@ -956,6 +994,7 @@
             ScrollTrigger.removeEventListener("refreshInit", fn);
           });
           document.body.classList.remove("hg-enhanced");
+          document.body.classList.remove("scanner-pinned");
         };
       }
     );
@@ -963,6 +1002,60 @@
     function onLoadRefresh() {
       ScrollTrigger.refresh();
     }
+  });
+})();
+
+/* ============================================================
+   Scanner brake — #work has no gallery of its own, so it gets a
+   short dedicated pin: the section holds at the top while the
+   emerald wipe scrubs 0→1 over ~0.85 viewport of scroll, so it
+   can't blink past at scroll speed. script.js owns --work-reveal /
+   --scan-glow while pinned; fx.js reads them back. Mobile /
+   reduced-motion: no pin, fx.js drives the wipe off the live rect.
+   ============================================================ */
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") return;
+    if (typeof gsap.matchMedia !== "function") return;
+    var workEl = document.getElementById("work");
+    if (!workEl) return;
+    gsap.registerPlugin(ScrollTrigger);
+
+    function setReveal(p) {
+      workEl.style.setProperty("--work-reveal", p.toFixed(4));
+      var g = Math.max(0, Math.min(1, Math.min(p * 7, (1 - p) * 7)));
+      workEl.style.setProperty("--scan-glow", g.toFixed(4));
+    }
+
+    gsap.matchMedia().add(
+      "(min-width: 768px) and (prefers-reduced-motion: no-preference)",
+      function () {
+        var st = ScrollTrigger.create({
+          trigger: workEl,
+          start: "top top",
+          end: function () {
+            return "+=" + Math.round(window.innerHeight * 0.85);
+          },
+          pin: true,
+          scrub: 0.7,
+          refreshPriority: 1,
+          invalidateOnRefresh: true,
+          onUpdate: function (self) {
+            setReveal(self.progress);
+          },
+          onLeave: function () {
+            setReveal(1);
+          },
+          onLeaveBack: function () {
+            setReveal(0);
+          },
+        });
+        return function cleanup() {
+          st.kill();
+        };
+      }
+    );
   });
 })();
 
