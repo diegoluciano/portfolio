@@ -45,6 +45,30 @@
   <a class="topbar__cta" href="#finale">Let's talk</a>
 </header>
 
+<!-- Filter for the hero entrance glitch (script.js animates it, then drops it).
+     Noise stretched along x makes horizontal bands; the displacement map shifts
+     each band sideways, and the R/B channels are offset for a chromatic split. -->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+  <filter id="hero-glitch" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence id="hg-noise" type="fractalNoise" baseFrequency="0.0015 0.045" numOctaves="1" seed="11" result="noise" />
+    <!-- quantise the noise: most rows stay put, a few hard-edged bands jump left or right -->
+    <feComponentTransfer in="noise" result="steps">
+      <feFuncR type="discrete" tableValues="0.12 0.12 0.12 0.12 0.12 0.12 0.12 0.12 0.5 0.5 0.5 0.5 0.88 0.88 0.88 0.88 0.88 0.88 0.88 0.88" />
+      <feFuncG type="linear" slope="0" intercept="0.5" />
+      <feFuncB type="linear" slope="0" intercept="0.5" />
+      <feFuncA type="linear" slope="0" intercept="1" />
+    </feComponentTransfer>
+    <feDisplacementMap id="hg-disp" in="SourceGraphic" in2="steps" scale="0" xChannelSelector="R" yChannelSelector="G" result="d" />
+    <feColorMatrix in="d" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+    <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
+    <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
+    <feOffset id="hg-r" in="r" dx="0" dy="0" result="r2" />
+    <feOffset id="hg-b" in="b" dx="0" dy="0" result="b2" />
+    <feBlend in="r2" in2="g" mode="screen" result="rg" />
+    <feBlend in="rg" in2="b2" mode="screen" />
+  </filter>
+</svg>
+
 <main>
 
   <!-- ============ HERO — cinematic scroll-scrub film ============ -->
@@ -52,18 +76,55 @@
     class="scroll-scrub"
     id="hero"
     data-scroll-scrub-root
-    data-clip="assets/hero/hero-scrub.mp4"
+    data-clip="assets/hero/hero-reveal.mp4"
   >
     <div class="scroll-scrub__stage">
       <div class="scroll-scrub__media" aria-hidden="true">
         <figure
           class="scroll-scrub__layer scroll-scrub__layer--scene"
           data-scroll-scrub-layer
-          style="--ss-object-position: 50% 32%; --ss-mobile-position: 62% 24%;"
+          style="--ss-object-position: 50% 32%; --ss-mobile-position: 50% 28%;"
         >
           <div class="scroll-scrub__poster scroll-scrub__poster--placeholder" aria-hidden="true"></div>
+          <!-- Looping "alive" clip — takes over from the scrubbed film once the
+               head has fully opened, so the mechanisms keep moving. script.js
+               plays/pauses it; the engine never touches it. -->
+          <video
+            class="hero-alive"
+            data-hero-alive
+            data-src="assets/hero/hero-alive.mp4"
+            muted
+            loop
+            playsinline
+            preload="none"
+            aria-hidden="true"
+          ></video>
         </figure>
       </div>
+
+      <!-- Anatomy callouts. Positions are computed in script.js from the
+           video's own cover-crop math so they stay glued to the exploded
+           head at every viewport; visibility is scroll-driven (--ss-pin). -->
+      <div class="hero-callouts" data-hero-callouts aria-hidden="true">
+        <div class="hc" data-hc data-ax="0.40" data-ay="0.265" data-lx="0.285" data-side="left" style="--in: 0.55;">
+          <span class="hc__dot"></span><span class="hc__line"></span>
+          <p class="hc__label"><span class="hc__n">01</span>AI Prototyping</p>
+        </div>
+        <div class="hc" data-hc data-ax="0.69" data-ay="0.31" data-lx="0.725" data-side="right" style="--in: 0.62;">
+          <span class="hc__dot"></span><span class="hc__line"></span>
+          <p class="hc__label"><span class="hc__n">02</span>Design Systems</p>
+        </div>
+        <div class="hc" data-hc data-ax="0.645" data-ay="0.575" data-lx="0.725" data-side="right" style="--in: 0.69;">
+          <span class="hc__dot"></span><span class="hc__line"></span>
+          <p class="hc__label"><span class="hc__n">03</span>UI Engineering</p>
+        </div>
+        <dl class="hc-spec" data-hc-spec style="--in: 0.76;">
+          <div><dt>Build year</dt><dd>1982</dd></div>
+          <div><dt>In tech since</dt><dd>2001 <span data-years></span></dd></div>
+        </dl>
+      </div>
+
+      <div class="hero-scan" data-hero-scan aria-hidden="true"></div>
 
       <div class="scroll-scrub__progress" aria-hidden="true"><span></span></div>
 
@@ -93,6 +154,18 @@
               <li>AI Prototyping</li>
               <li>UI Engineering</li>
             </ul>
+            <!-- Loading manifest: real progress + what's being fetched. Shown
+                 only while the loader runs (script.js), sits where the tag
+                 row will land. -->
+            <p class="ld-manifest" data-ld-manifest aria-hidden="true">
+              <span class="ld-manifest__pct" data-ld-pct>0%</span>
+              <span class="ld-manifest__items">
+                <span data-ld-item="fonts">Typography</span>
+                <span data-ld-item="loop">Mechanics</span>
+                <span data-ld-item="film">Reveal film</span>
+              </span>
+              <span class="ld-manifest__note" data-ld-note>Preparing an interactive film</span>
+            </p>
           </div>
         </div>
       </article>
@@ -190,12 +263,73 @@
     </div>
   </section>
 
+  <section class="horiz-gallery-wrapper" id="hg-creative-lab" data-hg>
+    <div class="horiz-gallery-strip" data-hg-strip>
+
+      <div class="hg-panel hg-panel--intro">
+        <div class="hg-intro-heading">
+          <p class="hg-eyebrow">01 — A global leader in data resilience &amp; AI · Internal Platform · 2026</p>
+          <h3 class="hg-title">Creative Lab — Internal Tools &amp; AI Platform</h3>
+        </div>
+        <div class="hg-intro-copy">
+          <p class="hg-lede">An internal platform I created so a large company could share the tools, prototypes and AI artifacts its teams were building — one secure site inside the VPN, instead of scattered repos and links.</p>
+          <div class="hg-body-text">
+            <p>Eight areas sit behind one navigation and one versioned changelog: self-service apps stakeholders run on their own, a Creative Hub of interface proof-of-concepts, a portfolio of campaign landing pages, a media inventory, downloads and more. It currently hosts roughly 14 UI POCs (8 fully deployed), 3 self-service apps and 3 campaign sites.</p>
+            <p>I spotted the need — teams had nowhere shared to publish internal tools and AI work, which is a real race right now — and built the answer myself: a site that runs inside the corporate VPN, fully self-hosted, wired to GitLab so every push runs through Jenkins to build and deploy straight into the platform. Six months in, other teams have joined and are standing up similar spaces of their own, reading from SharePoint repositories and building on top. The UI follows the company's Prism design system.</p>
+          </div>
+          <dl class="hg-meta">
+            <div><dt>Role</dt><dd>Creator · design &amp; build</dd></div>
+            <div><dt>Tools</dt><dd>Claude Code, OpenAI Codex, GitLab CI, Jenkins</dd></div>
+            <div><dt>Status</dt><dd>Live internally · evolving (v1.42)</dd></div>
+          </dl>
+        </div>
+        <a class="hg-next" href="#hg-kraft-heinz" aria-label="Next project — Kraft Heinz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="6 13 12 19 18 13"></polyline></svg>
+        </a>
+      </div>
+
+      <div class="hg-panel hg-panel--grid">
+        <div class="hg-grid-head" data-reveal>
+          <p class="hg-eyebrow">Inside the platform</p>
+          <h4 class="hg-grid-title">Four areas, one workspace</h4>
+        </div>
+        <ul class="mgrid" data-mgrid>
+          <li class="mgrid__item">
+            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/01-about.jpg" data-lb-cap="About — what Creative Lab is">
+              <picture><source srcset="assets/work/creative-lab/01-about.webp" type="image/webp" /><img src="assets/work/creative-lab/01-about.jpg" alt="Creative Lab — About page explaining what the internal platform is" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
+              <span class="mgrid__cap">About</span>
+            </button>
+          </li>
+          <li class="mgrid__item">
+            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/02-creative-hub.jpg" data-lb-cap="Creative Hub — UI proof-of-concepts">
+              <picture><source srcset="assets/work/creative-lab/02-creative-hub.webp" type="image/webp" /><img src="assets/work/creative-lab/02-creative-hub.jpg" alt="Creative Lab — Creative Hub gallery of interface proof-of-concepts" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
+              <span class="mgrid__cap">Creative Hub</span>
+            </button>
+          </li>
+          <li class="mgrid__item">
+            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/03-self-service.jpg" data-lb-cap="Self-Service Apps — tools stakeholders run on their own">
+              <picture><source srcset="assets/work/creative-lab/03-self-service.webp" type="image/webp" /><img src="assets/work/creative-lab/03-self-service.jpg" alt="Creative Lab — Self-Service Apps that stakeholders run on their own" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
+              <span class="mgrid__cap">Self-Service Apps</span>
+            </button>
+          </li>
+          <li class="mgrid__item">
+            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/04-portfolio.jpg" data-lb-cap="Portfolio — finished and in-progress campaign sites">
+              <picture><source srcset="assets/work/creative-lab/04-portfolio.webp" type="image/webp" /><img src="assets/work/creative-lab/04-portfolio.jpg" alt="Creative Lab — Portfolio of finished and in-progress campaign sites" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
+              <span class="mgrid__cap">Portfolio</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="hg-progress" aria-hidden="true"><span></span></div>
+  </section>
+
   <section class="horiz-gallery-wrapper" id="hg-kraft-heinz" data-hg>
     <div class="horiz-gallery-strip" data-hg-strip>
 
       <div class="hg-panel hg-panel--intro">
         <div class="hg-intro-heading">
-          <p class="hg-eyebrow">01 — Kraft Heinz · Product Design · 2018–2021</p>
+          <p class="hg-eyebrow">02 — Kraft Heinz · Product Design · 2018–2021</p>
           <h3 class="hg-title">Global Landing Pages &amp; Design Tokens</h3>
         </div>
         <div class="hg-intro-copy">
@@ -209,7 +343,7 @@
             <div><dt>Impact</dt><dd>5,000+ employees · 40 countries</dd></div>
           </dl>
         </div>
-        <a class="hg-next" href="#hg-creative-lab" aria-label="Next project — Creative Lab">
+        <a class="hg-next" href="#hg-dex" aria-label="Next project — Dex">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="6 13 12 19 18 13"></polyline></svg>
         </a>
       </div>
@@ -261,67 +395,6 @@
           </div>
           <p class="hg-shot__caption">Away From Home — Campaign Landing</p>
         </div>
-      </div>
-    </div>
-    <div class="hg-progress" aria-hidden="true"><span></span></div>
-  </section>
-
-  <section class="horiz-gallery-wrapper" id="hg-creative-lab" data-hg>
-    <div class="horiz-gallery-strip" data-hg-strip>
-
-      <div class="hg-panel hg-panel--intro">
-        <div class="hg-intro-heading">
-          <p class="hg-eyebrow">02 — A global leader in data resilience &amp; AI · Internal Platform · 2026</p>
-          <h3 class="hg-title">Creative Lab — Internal Tools &amp; AI Platform</h3>
-        </div>
-        <div class="hg-intro-copy">
-          <p class="hg-lede">An internal platform I created so a large company could share the tools, prototypes and AI artifacts its teams were building — one secure site inside the VPN, instead of scattered repos and links.</p>
-          <div class="hg-body-text">
-            <p>Eight areas sit behind one navigation and one versioned changelog: self-service apps stakeholders run on their own, a Creative Hub of interface proof-of-concepts, a portfolio of campaign landing pages, a media inventory, downloads and more. It currently hosts roughly 14 UI POCs (8 fully deployed), 3 self-service apps and 3 campaign sites.</p>
-            <p>I spotted the need — teams had nowhere shared to publish internal tools and AI work, which is a real race right now — and built the answer myself: a site that runs inside the corporate VPN, fully self-hosted, wired to GitLab so every push runs through Jenkins to build and deploy straight into the platform. Six months in, other teams have joined and are standing up similar spaces of their own, reading from SharePoint repositories and building on top. The UI follows the company's Prism design system.</p>
-          </div>
-          <dl class="hg-meta">
-            <div><dt>Role</dt><dd>Creator · design &amp; build</dd></div>
-            <div><dt>Tools</dt><dd>Claude Code, OpenAI Codex, GitLab CI, Jenkins</dd></div>
-            <div><dt>Status</dt><dd>Live internally · evolving (v1.42)</dd></div>
-          </dl>
-        </div>
-        <a class="hg-next" href="#hg-dex" aria-label="Next project — Dex">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="6 13 12 19 18 13"></polyline></svg>
-        </a>
-      </div>
-
-      <div class="hg-panel hg-panel--grid">
-        <div class="hg-grid-head" data-reveal>
-          <p class="hg-eyebrow">Inside the platform</p>
-          <h4 class="hg-grid-title">Four areas, one workspace</h4>
-        </div>
-        <ul class="mgrid" data-mgrid>
-          <li class="mgrid__item">
-            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/01-about.jpg" data-lb-cap="About — what Creative Lab is">
-              <picture><source srcset="assets/work/creative-lab/01-about.webp" type="image/webp" /><img src="assets/work/creative-lab/01-about.jpg" alt="Creative Lab — About page explaining what the internal platform is" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
-              <span class="mgrid__cap">About</span>
-            </button>
-          </li>
-          <li class="mgrid__item">
-            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/02-creative-hub.jpg" data-lb-cap="Creative Hub — UI proof-of-concepts">
-              <picture><source srcset="assets/work/creative-lab/02-creative-hub.webp" type="image/webp" /><img src="assets/work/creative-lab/02-creative-hub.jpg" alt="Creative Lab — Creative Hub gallery of interface proof-of-concepts" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
-              <span class="mgrid__cap">Creative Hub</span>
-            </button>
-          </li>
-          <li class="mgrid__item">
-            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/03-self-service.jpg" data-lb-cap="Self-Service Apps — tools stakeholders run on their own">
-              <picture><source srcset="assets/work/creative-lab/03-self-service.webp" type="image/webp" /><img src="assets/work/creative-lab/03-self-service.jpg" alt="Creative Lab — Self-Service Apps that stakeholders run on their own" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
-              <span class="mgrid__cap">Self-Service Apps</span>
-            </button>
-          </li>
-          <li class="mgrid__item">
-            <button type="button" class="mgrid__btn" data-lb-src="assets/work/creative-lab/04-portfolio.jpg" data-lb-cap="Portfolio — finished and in-progress campaign sites">
-              <picture><source srcset="assets/work/creative-lab/04-portfolio.webp" type="image/webp" /><img src="assets/work/creative-lab/04-portfolio.jpg" alt="Creative Lab — Portfolio of finished and in-progress campaign sites" loading="lazy" decoding="async" width="1600" height="1000" /></picture>
-              <span class="mgrid__cap">Portfolio</span>
-            </button>
-          </li>
-        </ul>
       </div>
     </div>
     <div class="hg-progress" aria-hidden="true"><span></span></div>

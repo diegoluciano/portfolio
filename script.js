@@ -33,6 +33,123 @@
 
   document.body.classList.add("pl-lock", "pl-loading");
 
+  /* ---- Hard scroll lock ------------------------------------------------
+     overflow:hidden alone isn't enough: Lenis scrolls via JS, and touch /
+     keyboard still move the page. Block every input path until the film is
+     fully in, and always start from the top so a reload mid-page can't skip
+     the intro. unlockScroll() is the single exit. */
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  if (!location.hash) window.scrollTo(0, 0);
+  function stopEvent(e) {
+    e.preventDefault();
+  }
+  var LOCK_KEYS = [" ", "Spacebar", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"];
+  function stopKey(e) {
+    if (LOCK_KEYS.indexOf(e.key) > -1) e.preventDefault();
+  }
+  window.addEventListener("wheel", stopEvent, { passive: false });
+  window.addEventListener("touchmove", stopEvent, { passive: false });
+  window.addEventListener("keydown", stopKey);
+  function unlockScroll() {
+    window.removeEventListener("wheel", stopEvent, { passive: false });
+    window.removeEventListener("touchmove", stopEvent, { passive: false });
+    window.removeEventListener("keydown", stopKey);
+    document.body.classList.remove("pl-lock");
+    if (window.__lenis) window.__lenis.start();
+  }
+
+  /* ---- Real download progress for the hero clips -----------------------
+     The loader owns the two hero downloads (scrub film + "alive" loop) so
+     it can show TRUE byte progress and hold the page until both are in. The
+     scroll-scrub engine and the loop player pick the finished blobs up from
+     window.__heroPreload, so nothing is downloaded twice. --ld (0→1) on
+     <html> is the live fraction, for anything that wants to react to it. */
+  var preload = (window.__heroPreload = {});
+  var heroRoot0 = document.querySelector("[data-scroll-scrub-root]");
+  var aliveEl0 = document.querySelector("[data-hero-alive]");
+  var filmUrl = heroRoot0 && heroRoot0.getAttribute("data-clip");
+  var loopUrl = aliveEl0 && aliveEl0.getAttribute("data-src");
+  var clipUrls = [filmUrl, loopUrl].filter(Boolean);
+  var bytes = {};
+  var progressHook = null;
+
+  // Loading manifest (index.html): live %, what's been fetched, and a
+  // "what's coming" note that only appears if the wait is actually long.
+  var manifest = document.querySelector("[data-ld-manifest]");
+  var pctEl = manifest && manifest.querySelector("[data-ld-pct]");
+  var noteEl = manifest && manifest.querySelector("[data-ld-note]");
+  function markItem(key) {
+    var el = manifest && manifest.querySelector('[data-ld-item="' + key + '"]');
+    if (el) el.classList.add("is-on");
+  }
+  var HARD_CAP_MS = 45000; // never trap someone forever on a dead connection
+
+  function fraction() {
+    var got = 0;
+    var total = 0;
+    clipUrls.forEach(function (u) {
+      if (bytes[u]) {
+        got += bytes[u].got;
+        total += bytes[u].total;
+      }
+    });
+    return total > 0 ? Math.min(1, got / total) : 0;
+  }
+  function totalBytes() {
+    var t = 0;
+    clipUrls.forEach(function (u) {
+      if (bytes[u]) t += bytes[u].total;
+    });
+    return t;
+  }
+  function report() {
+    var f = fraction();
+    root.style.setProperty("--ld", f.toFixed(4));
+    if (pctEl) pctEl.textContent = Math.round(f * 100) + "%";
+    if (progressHook) progressHook(f);
+  }
+  function fetchClip(url) {
+    bytes[url] = { got: 0, total: 0 };
+    return fetch(url)
+      .then(function (res) {
+        if (!res.ok) throw new Error("clip " + res.status);
+        bytes[url].total = parseInt(res.headers.get("Content-Length"), 10) || 0;
+        if (!res.body || !res.body.getReader) return res.blob();
+        var reader = res.body.getReader();
+        var chunks = [];
+        var type = res.headers.get("Content-Type") || "video/mp4";
+        return (function pump() {
+          return reader.read().then(function (r) {
+            if (r.done) return new Blob(chunks, { type: type });
+            chunks.push(r.value);
+            bytes[url].got += r.value.length;
+            report();
+            return pump();
+          });
+        })();
+      })
+      .then(function (blob) {
+        bytes[url].got = bytes[url].total = blob.size;
+        report();
+        return blob;
+      });
+  }
+  clipUrls.forEach(function (u) {
+    preload[u] = fetchClip(u);
+    preload[u].catch(function () {}); // surfaced via m3 below
+  });
+  if (filmUrl) preload[filmUrl].then(function () { markItem("film"); }, function () {});
+  if (loopUrl) preload[loopUrl].then(function () { markItem("loop"); }, function () {});
+
+  var allLoaded = false;
+  setTimeout(function () {
+    if (allLoaded || !noteEl) return;
+    var mb = totalBytes() / 1e6;
+    noteEl.textContent =
+      "Preparing an interactive film" + (mb ? " \u00b7 " + mb.toFixed(1) + " MB" : "");
+    noteEl.classList.add("is-shown");
+  }, 2200);
+
   var m1 = new Promise(function (r) {
     setTimeout(r, 450); // scripts/CSS in — plus a minimum on-screen beat
   });
@@ -40,36 +157,76 @@
     document.fonts && document.fonts.ready
       ? document.fonts.ready
       : Promise.resolve();
-  var m3 = new Promise(function (r) {
-    var t0 = Date.now();
-    var iv = setInterval(function () {
-      var v = document.querySelector("[data-scroll-scrub-layer] video");
-      if ((v && v.readyState >= 3) || Date.now() - t0 > 9000) {
-        clearInterval(iv);
-        r();
-      }
-    }, 120);
+  m2.then(function () {
+    markItem("fonts");
   });
+  // m3 = both clips fully downloaded AND the engine's <video> decodable.
+  // Capped, so a dead connection degrades to the poster instead of a trap.
+  var m3 = Promise.race([
+    Promise.all(
+      clipUrls.map(function (u) {
+        return preload[u];
+      })
+    )
+      .then(function () {
+        return new Promise(function (r) {
+          var t0 = Date.now();
+          var iv = setInterval(function () {
+            var v = document.querySelector("[data-scroll-scrub-layer] video");
+            if ((v && v.readyState >= 3) || Date.now() - t0 > 8000) {
+              clearInterval(iv);
+              r();
+            }
+          }, 120);
+        });
+      })
+      .catch(function () {}),
+    new Promise(function (r) {
+      setTimeout(r, HARD_CAP_MS);
+    }),
+  ]);
 
   // Each word "inks in" left→right; its fill IS that word's real load
   // progress. Indeterminate creep while its milestone is pending, then it
   // completes to 100% when the milestone resolves — and the matching logo
   // letter (D → H → L) pops in as the word lands.
   function inkWord(i, milestone) {
-    var creep = gsap.to(words[i], {
-      "--p": "84%",
-      duration: 2.6,
-      ease: "power1.out",
-    });
+    words[i].classList.add("is-inking");
+    var creep = null;
+    if (i === words.length - 1) {
+      // the last word IS the film's download: its fill follows real bytes
+      progressHook = function (f) {
+        gsap.to(words[i], {
+          "--p": 6 + 90 * f + "%",
+          duration: 0.45,
+          ease: "power1.out",
+          overwrite: true,
+        });
+      };
+      progressHook(fraction());
+    } else {
+      creep = gsap.to(words[i], {
+        "--p": "84%",
+        duration: 2.6,
+        ease: "power1.out",
+      });
+    }
     return milestone.then(function () {
-      creep.kill();
+      if (creep) creep.kill();
+      if (i === words.length - 1) {
+        progressHook = null;
+        gsap.killTweensOf(words[i]);
+      }
       return new Promise(function (res) {
         // finish the fill at a steady, unhurried pace — no snap at the end
         gsap.to(words[i], {
           "--p": "100%",
           duration: 0.7,
           ease: "power1.out",
-          onComplete: res,
+          onComplete: function () {
+            words[i].classList.remove("is-inking");
+            res();
+          },
         });
         if (logoLetters[i]) {
           gsap.fromTo(
@@ -82,6 +239,89 @@
     });
   }
 
+  /* ---- Hero entrance: a designed glitch ---------------------------------
+     Runs once, the moment the loader lets the film exist. The film locks on
+     through horizontal slice displacement + an RGB split (SVG #hero-glitch
+     in index.html) that settles to a clean frame, then an emerald scan line
+     sweeps down it. Everything is set in one task (stage dark → filter on →
+     loading class off) so there is never a flash of the un-glitched frame,
+     and the filter is dropped afterwards so it costs nothing. Returns the
+     timeline (handy for scrubbing it in devtools: __heroEntrance()). */
+  function heroEntrance() {
+    var media = document.querySelector(".scroll-scrub__media");
+    var scan = document.querySelector("[data-hero-scan]");
+    var noise = document.getElementById("hg-noise");
+    var disp = document.getElementById("hg-disp");
+    var offR = document.getElementById("hg-r");
+    var offB = document.getElementById("hg-b");
+    if (!media || !noise || !disp || !offR || !offB) {
+      document.body.classList.remove("pl-loading");
+      return null;
+    }
+
+    var k = window.matchMedia("(max-width: 860px)").matches ? 0.6 : 1; // gentler on phones
+    var st = { scale: 0, split: 0 };
+    function apply() {
+      disp.setAttribute("scale", st.scale.toFixed(1));
+      offR.setAttribute("dx", st.split.toFixed(1));
+      offB.setAttribute("dx", (-st.split).toFixed(1));
+    }
+
+    gsap.set(media, { opacity: 0 });
+    media.style.filter = "url(#hero-glitch)";
+    document.body.classList.remove("pl-loading");
+
+    // [time, opacity, slice displacement, RGB split, noise seed]
+    var beats = [
+      [0.0, 0.0, 0, 0, 11],
+      [0.06, 0.85, 80, 20, 47],
+      [0.14, 0.4, 36, 10, 203],
+      [0.22, 1.0, 110, 26, 86],
+      [0.32, 0.65, 28, 9, 311],
+      [0.4, 1.0, 64, 16, 150],
+      [0.52, 0.85, 24, 11, 29],
+      [0.6, 1.0, 12, 6, 400],
+    ];
+    var tl = gsap.timeline({
+      onComplete: function () {
+        media.style.filter = "";
+        gsap.set(media, { clearProps: "opacity" });
+        if (scan) gsap.set(scan, { opacity: 0 });
+      },
+    });
+    beats.forEach(function (b) {
+      tl.add(function () {
+        noise.setAttribute("seed", b[4]);
+        st.scale = b[2] * k;
+        st.split = b[3] * k;
+        apply();
+        gsap.set(media, { opacity: b[1] });
+      }, b[0]);
+    });
+    // settle: the slices and the colour split relax to nothing
+    tl.to(st, { scale: 0, split: 0, duration: 0.6, ease: "power3.out", onUpdate: apply }, 0.64);
+    tl.set(media, { opacity: 1 }, 0.64);
+    // the emerald scanner line sweeps the frame as it resolves
+    if (scan) {
+      tl.set(scan, { y: 0, opacity: 0 }, 0.5);
+      tl.to(scan, { opacity: 1, duration: 0.1 }, 0.5);
+      tl.to(
+        scan,
+        {
+          y: function () {
+            return scan.parentNode.clientHeight;
+          },
+          duration: 0.95,
+          ease: "power2.inOut",
+        },
+        0.5
+      );
+      tl.to(scan, { opacity: 0, duration: 0.25 }, 1.2);
+    }
+    return tl;
+  }
+  window.__heroEntrance = heroEntrance;
+
   var chain = Promise.resolve();
   [m1, m2, m3].forEach(function (m, i) {
     chain = chain.then(function () {
@@ -90,11 +330,14 @@
   });
 
   chain.then(function () {
+    allLoaded = true;
+    if (pctEl) pctEl.textContent = "100%";
+    if (manifest) manifest.classList.add("is-done");
     // Hold the reveal elements hidden with inline values (over the `.js`
     // rules). Nothing gets clearProps'd until the very end — clearing inline
     // while a `.js` opacity:0 rule is still live is what made things
     // appear → vanish → reappear.
-    var reveal = [kicker, tags, cta, cue].filter(Boolean);
+    var reveal = [kicker, cta, cue].filter(Boolean); // the tag row is no longer part of the opening
     gsap.set(reveal, { autoAlpha: 0, y: 14 });
 
     var tl = gsap.timeline({
@@ -103,18 +346,18 @@
         root.classList.remove("js"); // drop all `.js` hiding rules at once
         gsap.set(reveal.concat(logoLetters), { clearProps: "all" });
         gsap.set(words, { clearProps: "--p" });
-        document.body.classList.remove("pl-lock");
+        words.forEach(function (w) {
+          w.classList.remove("is-inking");
+        });
+        unlockScroll();
         if (window.ScrollTrigger) window.ScrollTrigger.refresh();
       },
     });
 
     tl.to({}, { duration: 0.2 }); // settle on the full name (D H L already in)
     if (kicker) tl.to(kicker, { autoAlpha: 1, y: 0, duration: 0.6 }, ">");
-    if (tags) tl.to(tags, { autoAlpha: 1, y: 0, duration: 0.6 }, ">-0.35");
     // video (blur → sharp) + particle field ease in via their CSS transitions
-    tl.add(function () {
-      document.body.classList.remove("pl-loading");
-    }, ">-0.15");
+    tl.add(heroEntrance, ">-0.15");
     if (cta) tl.to(cta, { autoAlpha: 1, y: 0, duration: 0.7 }, "<");
     if (cue) tl.to(cue, { autoAlpha: 1, y: 0, duration: 0.8 }, "<0.2");
     tl.to({}, { duration: 0.8 }); // let the CSS video/particle fade land before release
@@ -153,6 +396,8 @@
     gsap.ticker.lagSmoothing(0);
 
     window.__lenis = lenis;
+    // the loader may still be holding the page: stay frozen until it lets go
+    if (document.body.classList.contains("pl-lock")) lenis.stop();
   });
 })();
 
@@ -365,11 +610,19 @@
       segment.abort = new AbortController();
       var request = segment.abort;
 
-      fetch(source, { signal: request.signal })
-        .then(function (response) {
-          if (!response.ok) throw new Error("Clip failed: " + response.status);
-          return response.blob();
-        })
+      var pre = window.__heroPreload && window.__heroPreload[source];
+      (pre
+        ? pre.catch(function () {
+            return fetch(source, { signal: request.signal }).then(function (response) {
+              if (!response.ok) throw new Error("Clip failed: " + response.status);
+              return response.blob();
+            });
+          })
+        : fetch(source, { signal: request.signal }).then(function (response) {
+            if (!response.ok) throw new Error("Clip failed: " + response.status);
+            return response.blob();
+          })
+      )
         .then(function (blob) {
           if (destroyed || request.signal.aborted || segment.loadedSource !== source) {
             return;
@@ -442,11 +695,22 @@
       var crossfade = 0.1 * viewportHeight;
       var currentIndex = 0;
 
+      var pinNow = 0;
       runtime.forEach(function (segment, index) {
         if (y >= segment.start) currentIndex = index;
 
         var length = Math.max(segment.end - segment.start, 1);
         var local = clamp((y - segment.start) / length);
+        /* Pinned scenes: the stage is sticky for (length - viewport) of
+           scroll, so the film is scrubbed across that stretch only — and
+           only up to scene.videoSpan of it, leaving the rest for callouts
+           and a hold. */
+        if (segment.scene && segment.scene.pinned) {
+          var pinLen = Math.max(length - viewportHeight, 1);
+          var pin = clamp((y - segment.start) / pinLen);
+          local = clamp(pin / (segment.scene.videoSpan || 1));
+          pinNow = pin;
+        }
         segment.target = segment.linger ? lingerEase(local, segment.linger) : local;
 
         var outside = 0;
@@ -481,6 +745,8 @@
       }
 
       root.style.setProperty("--ss-progress", String(clamp(y / total)));
+      root.style.setProperty("--ss-pin", String(pinNow));
+      root.dispatchEvent(new CustomEvent("scrub:pin", { detail: pinNow }));
     }
 
     function updateVideos() {
@@ -565,9 +831,11 @@
             tags: ["Design Systems", "AI Prototyping", "UI Engineering"],
             align: "left",
             scroll: 2.4,
-            linger: 0.18,
+            linger: 0,
+            pinned: true,
+            videoSpan: 0.66,
             objectPosition: "50% 32%",
-            mobileObjectPosition: "62% 24%",
+            mobileObjectPosition: "50% 28%",
           },
         ],
         [],
@@ -1434,4 +1702,113 @@
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(refresh);
   }
+})();
+
+/* ============================================================
+   Hero reveal — anatomy callouts + looping "alive" clip.
+   The callouts are placed from the film's own object-fit:cover
+   math (so they stay glued to the exploded head at any viewport),
+   and the loop clip takes over once the scrubbed film has fully
+   opened the head, so the mechanisms keep moving.
+   Driven by the "scrub:pin" event the scroll-scrub engine fires.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var root = document.querySelector("[data-scroll-scrub-root]");
+    if (!root) return;
+    var stage = root.querySelector(".scroll-scrub__stage");
+    var overlay = root.querySelector("[data-hero-callouts]");
+    var alive = root.querySelector("[data-hero-alive]");
+    if (!stage || !overlay) return;
+
+    var FRAME_W = 1920; // the film's intrinsic frame
+    var FRAME_H = 1080;
+    var mobileMQ = window.matchMedia("(max-width: 860px)");
+
+    var years = root.querySelector("[data-years]");
+    if (years) years.textContent = new Date().getFullYear() - 2001 + " yrs";
+
+    function place() {
+      var rect = stage.getBoundingClientRect();
+      var W = rect.width;
+      var H = rect.height;
+      var scale = Math.max(W / FRAME_W, H / FRAME_H);
+      var rw = FRAME_W * scale;
+      var rh = FRAME_H * scale;
+
+      var pos = (alive ? getComputedStyle(alive).objectPosition : "50% 32%") || "50% 32%";
+      var parts = pos.split(/\s+/);
+      var px = parseFloat(parts[0]) / 100;
+      var py = parseFloat(parts.length > 1 ? parts[1] : parts[0]) / 100;
+      if (isNaN(px)) px = 0.5;
+      if (isNaN(py)) py = 0.5;
+      var ox = (W - rw) * px;
+      var oy = (H - rh) * py;
+
+      var stacked = mobileMQ.matches;
+      overlay.classList.toggle("is-stacked", stacked);
+
+      Array.prototype.forEach.call(overlay.querySelectorAll("[data-hc]"), function (el) {
+        if (stacked) {
+          el.style.left = "";
+          el.style.top = "";
+          el.style.removeProperty("--len");
+          return;
+        }
+        var ax = ox + parseFloat(el.getAttribute("data-ax")) * rw;
+        var ay = oy + parseFloat(el.getAttribute("data-ay")) * rh;
+        var lx = ox + parseFloat(el.getAttribute("data-lx")) * rw;
+        el.style.left = ax + "px";
+        el.style.top = ay + "px";
+        el.style.setProperty("--len", Math.abs(lx - ax) + "px");
+      });
+    }
+
+    var playing = false;
+
+    // The loader already downloaded the loop clip; hand it to the <video>.
+    if (alive && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      var aliveUrl = alive.getAttribute("data-src");
+      var aliveBlob = window.__heroPreload && window.__heroPreload[aliveUrl];
+      var useDirect = function () {
+        alive.src = aliveUrl;
+        alive.load();
+      };
+      if (aliveBlob) {
+        aliveBlob
+          .then(function (b) {
+            alive.src = URL.createObjectURL(b);
+            alive.load();
+          })
+          .catch(useDirect);
+      } else {
+        useDirect();
+      }
+    }
+
+    root.addEventListener("scrub:pin", function (e) {
+      if (!alive) return;
+      var pin = e.detail || 0;
+      var span = parseFloat(getComputedStyle(root).getPropertyValue("--ss-span")) || 0.66;
+
+      var want = pin >= span - 0.02;
+      if (want && !playing) {
+        playing = true;
+        var p = alive.play();
+        if (p && p.catch) p.catch(function () { playing = false; });
+      } else if (!want && playing) {
+        playing = false;
+        alive.pause();
+        if (pin < span - 0.06) alive.currentTime = 0; // always re-enter on frame 0
+      }
+    });
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("load", place);
+    if (mobileMQ.addEventListener) mobileMQ.addEventListener("change", place);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+  });
 })();

@@ -68,7 +68,7 @@ body.pl-lock {
 
 @property --p {
   syntax: "<percentage>";
-  inherits: false;
+  inherits: true; /* the scan-edge pseudo-element reads its word's fill */
   initial-value: 0%;
 }
 
@@ -90,6 +90,7 @@ body.pl-lock {
    the words fall back to normal cream text (identical at --p:100%). */
 .js .ttl-word {
   --p: 0%;
+  position: relative;
   color: transparent;
   background-image: linear-gradient(
     90deg,
@@ -101,6 +102,118 @@ body.pl-lock {
   -webkit-background-clip: text;
   background-clip: text;
   will-change: background-image;
+}
+
+/* The word being inked right now: a scanner-style emerald edge rides the
+   fill, and the letters breathe a halo that swells as the download (--ld,
+   0→1 on <html>) nears done. Same visual language as the #work scanner. */
+.js .ttl-word.is-inking {
+  animation: ldHalo 1.4s ease-in-out infinite;
+}
+.js .ttl-word.is-inking::after {
+  content: "";
+  position: absolute;
+  top: 0.1em;
+  bottom: 0.34em;
+  left: var(--p);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ss-accent, #28f2a4);
+  box-shadow:
+    0 0 10px var(--ss-accent, #28f2a4),
+    0 0 28px color-mix(in srgb, var(--ss-accent, #28f2a4) 55%, transparent);
+  animation: ldEdge 1.4s ease-in-out infinite;
+}
+@keyframes ldHalo {
+  0%, 100% {
+    filter: drop-shadow(0 0 calc(2px + var(--ld, 0) * 8px) color-mix(in srgb, var(--ss-accent, #28f2a4) 16%, transparent));
+  }
+  50% {
+    filter: drop-shadow(0 0 calc(8px + var(--ld, 0) * 18px) color-mix(in srgb, var(--ss-accent, #28f2a4) 55%, transparent));
+  }
+}
+@keyframes ldEdge {
+  0%, 100% { opacity: 0.55; transform: scaleY(0.86); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+/* Loading manifest — honest progress + what's being fetched. Lives where
+   the tag row will land and is only visible while the loader runs. */
+.ld-manifest {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1.5rem;
+  color: var(--ss-muted);
+  font-size: clamp(0.66rem, 0.9vw, 0.78rem);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+html.js body.pl-loading .ld-manifest {
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+html.js body.pl-loading .ld-manifest.is-done {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.ld-manifest__pct {
+  min-width: 3.4ch;
+  color: var(--ss-ink);
+  font-variant-numeric: tabular-nums;
+}
+.ld-manifest__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1.5rem;
+}
+.ld-manifest__items > span {
+  position: relative;
+  padding-left: 1.15em;
+  opacity: 0.5;
+  transition: opacity 0.4s ease, color 0.4s ease;
+}
+.ld-manifest__items > span::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0.5em;
+  height: 0.5em;
+  margin-top: -0.25em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+.ld-manifest__items > span.is-on {
+  color: var(--ss-accent);
+  opacity: 1;
+}
+.ld-manifest__items > span.is-on::before {
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+/* hangs below the main row, so the row itself stays level with the tag row */
+.ld-manifest__note {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.75rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.ld-manifest__note.is-shown {
+  opacity: 0.8;
+  transform: none;
 }
 
 .js .scroll-scrub__kicker,
@@ -125,55 +238,31 @@ html.js body.pl-loading .scroll-scrub__poster {
   opacity: 0;
 }
 
-/* Hero film entrance — cinemascope bars retract: opens from a thin
-   widescreen slit as the letterbox bars slide apart, with a small scale
-   settle. Reads as "the film starting", never as a glitch. The clipped
-   area just shows the near-black stage behind, so no separate bar
-   elements are needed. Runs once when the loader drops .pl-loading.
-   Applied to .scroll-scrub__media so the stage vignette/grain stay put
-   and it composes with the layer's scroll push-in (a child transform).
-   No-JS / reduced-motion skip it (loader drops html.js in those paths). */
-html.js body:not(.pl-loading) .scroll-scrub__media {
-  /* slow + fairly even curve — an expo-out here does ~80% of the move in
-     the first fraction and reads as instant; this stays watchable */
-  animation: heroLetterboxIn 2.7s cubic-bezier(0.5, 0.08, 0.2, 1) 0.2s both;
-  will-change: transform, opacity, clip-path;
-}
-/* the film itself opens through a circular iris centred on the subject,
-   nested inside the retracting letterbox — the visible area is the
-   intersection of the two, so it reads as an iris-in within a widescreen
-   frame. clip-path here doesn't touch the layer's scroll push-in transform. */
-html.js body:not(.pl-loading) .scroll-scrub__layer {
-  animation: heroIrisIn 2.1s cubic-bezier(0.5, 0.08, 0.2, 1) 0.2s both;
-  will-change: clip-path;
-}
-@keyframes heroLetterboxIn {
-  0% {
-    opacity: 0;
-    clip-path: inset(38% 0 38% 0);
-    transform: scale(1.035);
-  }
-  12% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    clip-path: inset(0 0 0 0);
-    transform: scale(1);
-  }
-}
-@keyframes heroIrisIn {
-  0% {
-    clip-path: circle(0% at 50% 34%);
-  }
-  100% {
-    clip-path: circle(150% at 50% 34%);
-  }
+/* Hero film entrance — a designed glitch, not a defect: the film locks on
+   through horizontal slice displacement + an RGB split (SVG filter
+   #hero-glitch, animated by script.js) that settles into a clean frame,
+   then an emerald scanner line sweeps down it — the same line the rest of
+   the site uses. Runs once when the loader drops .pl-loading. The filter is
+   removed from the element when it finishes, so it costs nothing after.
+   No-JS / reduced-motion skip it (the loader drops html.js in those paths). */
+.hero-scan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  width: 100%;
+  height: 2px;
+  background: var(--ss-accent, #28f2a4);
+  box-shadow:
+    0 0 14px var(--ss-accent, #28f2a4),
+    0 0 42px color-mix(in srgb, var(--ss-accent, #28f2a4) 55%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
 }
 @media (prefers-reduced-motion: reduce) {
-  html.js body:not(.pl-loading) .scroll-scrub__media,
-  html.js body:not(.pl-loading) .scroll-scrub__layer {
-    animation: none;
+  .hero-scan {
+    display: none;
   }
 }
 
@@ -434,8 +523,11 @@ body.more-work-solid .topbar__cta:focus-visible {
      of the hero scroll so it fades into the section below instead of
      cutting on a hard sticky edge. --ss-progress is 0→1 across the hero
      (script.js). The particle canvas is fixed on top, so it carries
-     across the seam and the transition reads as continuous. */
-  opacity: calc(1 - clamp(0, (var(--ss-progress, 0) - 0.62) * 3.7, 1));
+     across the seam and the transition reads as continuous.
+     The film is pinned for the first part of that range (see
+     #intro min-height), so the dissolve is held back until the pin
+     releases — --ss-fade-start / --ss-fade-k are set per breakpoint. */
+  opacity: calc(1 - clamp(0, (var(--ss-progress, 0) - var(--ss-fade-start, 0.78)) * var(--ss-fade-k, 4.5), 1));
   will-change: opacity;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -463,13 +555,9 @@ body.more-work-solid .topbar__cta:focus-visible {
   margin: 0;
   overflow: hidden;
   opacity: 0;
-  /* Scroll-driven camera push-in: the film layer eases from 1x to ~1.12x
-     across the hero scroll, reading as a slow dolly toward the subject on
-     top of the video's own micro-motion. Free (transform only); tracks
-     --ss-progress, which script.js keeps updated on the .scroll-scrub root. */
-  transform: scale(calc(1 + var(--ss-progress, 0) * 0.12));
-  transform-origin: 50% 36%;
-  will-change: opacity, transform;
+  /* No CSS push-in any more: the film itself now dollies in and turns, so a
+     second scale on top would double the move. */
+  will-change: opacity;
 }
 
 .scroll-scrub__layer:first-child {
@@ -578,7 +666,7 @@ body.more-work-solid .topbar__cta:focus-visible {
   width: 100%;
   height: 100%;
   background: var(--ss-accent);
-  transform: scaleX(var(--ss-progress));
+  transform: scaleX(var(--ss-pin, 0));
   transform-origin: left center;
 }
 
@@ -598,7 +686,9 @@ body.more-work-solid .topbar__cta:focus-visible {
    --ss-progress / video currentTime). Shorter on phones — 2.4 screens of
    scrolling past a mostly-static title is too much on a thumb. */
 #intro.scroll-scrub__chapter {
-  min-height: 240dvh;
+  /* ~280dvh of this is the pinned stretch: the film's dolly/turn/open, then
+     the callouts, then a short hold before the stage dissolves away. */
+  min-height: 380dvh;
 }
 
 .scroll-scrub__chapter-pin {
@@ -653,17 +743,21 @@ body.more-work-solid .topbar__cta:focus-visible {
   line-height: 1.5;
 }
 
+/* The specialties are no longer shown in the opening: they arrive as
+   callouts on the exploded head (see .hc). The list stays in the DOM for
+   screen readers / SEO, visually hidden. */
 .scroll-scrub__tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0;
-  margin: 1.25rem 0 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
   padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
   list-style: none;
-  color: var(--ss-muted);
-  font-size: clamp(0.78rem, 1.15vw, 0.92rem);
-  letter-spacing: 0.02em;
+  border: 0;
 }
 
 .scroll-scrub__tags li {
@@ -694,7 +788,7 @@ body.more-work-solid .topbar__cta:focus-visible {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   transform: translateX(-50%);
-  opacity: calc(1 - var(--ss-progress) * 6);
+  opacity: calc(1 - var(--ss-pin, 0) * 14);
   pointer-events: none;
 }
 
@@ -711,8 +805,12 @@ body.more-work-solid .topbar__cta:focus-visible {
 }
 
 @media (max-width: 860px) {
+  .scroll-scrub {
+    --ss-fade-start: 0.71;
+    --ss-fade-k: 3.45;
+  }
   #intro.scroll-scrub__chapter {
-    min-height: 135dvh;
+    min-height: 300dvh;
   }
 
   .scroll-scrub__poster,
@@ -796,7 +894,6 @@ body.more-work-solid .topbar__cta:focus-visible {
   z-index: 4;
   padding: clamp(4rem, 9vw, 7rem) 0;
   background: var(--bg);
-  border-bottom: 1px solid var(--line);
 }
 
 .stats > .container {
@@ -815,7 +912,7 @@ body.more-work-solid .topbar__cta:focus-visible {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(-1 * clamp(1.5rem, 3vw, 2.5rem));
+  bottom: calc(-1 * clamp(3rem, 6vw, 5rem));
   height: 1px;
   pointer-events: none;
 }
@@ -859,19 +956,6 @@ body.more-work-solid .topbar__cta:focus-visible {
   row-gap: clamp(2.75rem, 6vw, 4.75rem);
 }
 
-.stat {
-  padding-right: 1.25rem;
-  border-right: 1px solid var(--line);
-}
-
-.stat:last-child {
-  border-right: 0;
-}
-
-.stat:nth-child(3n) {
-  border-right: 0;
-}
-
 .stat__value {
   margin: 0;
   font-family: var(--font-display);
@@ -896,9 +980,6 @@ body.more-work-solid .topbar__cta:focus-visible {
     grid-template-columns: repeat(2, 1fr);
     row-gap: 2.5rem;
   }
-  .stat:nth-child(2n) {
-    border-right: 0;
-  }
 }
 
 @media (max-width: 560px) {
@@ -906,14 +987,218 @@ body.more-work-solid .topbar__cta:focus-visible {
     grid-template-columns: 1fr;
   }
   .stat {
-    padding-right: 0;
-    border-right: 0;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--line);
   }
   .stat:last-child {
     border-bottom: 0;
     padding-bottom: 0;
+  }
+}
+
+/* ============================================================
+   Hero reveal — the film dollies in, the head turns and opens up,
+   then anatomy callouts label the exploded parts. --ss-pin
+   (script.js) is 0→1 across the pinned stretch of the hero; the
+   video covers 0→--ss-span of it, the rest is callouts + hold.
+   ============================================================ */
+.scroll-scrub {
+  --ss-fade-start: 0.78;
+  --ss-fade-k: 4.5;
+  --ss-span: 0.66;
+}
+
+/* The title block is the opening act: gone within the first sliver of scroll. */
+.scroll-scrub__copy {
+  opacity: calc(1 - clamp(0, var(--ss-pin, 0) * 7, 1));
+  transform: translateY(calc(var(--ss-pin, 0) * -3rem));
+  will-change: opacity, transform;
+}
+
+/* Looping "alive" clip: crossfades in over the scrubbed film's final frame
+   (they're the same frame) so the opened head keeps moving. */
+.hero-alive {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--ss-object-position);
+  opacity: clamp(0, calc((var(--ss-pin, 0) - var(--ss-span, 0.66)) / 0.04), 1);
+  pointer-events: none;
+}
+
+.hero-callouts {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* A callout is an anchor point (left/top set in px by script.js from the
+   video's cover-crop math): a dot on the part, a hairline leader, a label. */
+.hc {
+  --c: clamp(0, calc((var(--ss-pin, 0) - var(--in, 0.7)) / 0.06), 1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+.hc__dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--ss-accent);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--ss-accent) 20%, transparent),
+    0 0 18px color-mix(in srgb, var(--ss-accent) 60%, transparent);
+  opacity: var(--c);
+  transform: scale(calc(0.4 + var(--c) * 0.6));
+}
+.hc__line {
+  position: absolute;
+  top: 0;
+  width: var(--len, 6rem);
+  height: 1px;
+  background: linear-gradient(90deg, var(--ss-accent), color-mix(in srgb, var(--ss-accent) 30%, transparent));
+  transform: scaleX(var(--c));
+}
+.hc[data-side="right"] .hc__line {
+  left: 0;
+  transform-origin: 0 50%;
+}
+.hc[data-side="left"] .hc__line {
+  right: 0;
+  transform-origin: 100% 50%;
+  background: linear-gradient(270deg, var(--ss-accent), color-mix(in srgb, var(--ss-accent) 30%, transparent));
+}
+.hc__label {
+  position: absolute;
+  top: 0;
+  margin: 0;
+  white-space: nowrap;
+  color: var(--ss-ink);
+  font-family: var(--font-body);
+  font-size: clamp(0.72rem, 0.95vw, 0.9rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
+  opacity: clamp(0, calc((var(--c) - 0.45) * 2), 1);
+}
+.hc[data-side="right"] .hc__label {
+  left: calc(var(--len, 6rem) + 0.9rem);
+  transform: translate(calc((1 - var(--c)) * -14px), -50%);
+}
+.hc[data-side="left"] .hc__label {
+  right: calc(var(--len, 6rem) + 0.9rem);
+  transform: translate(calc((1 - var(--c)) * 14px), -50%);
+}
+.hc__n {
+  margin-right: 0.9em;
+  color: var(--ss-accent);
+  font-weight: 600;
+}
+
+/* Spec plate — the "unit data" that replaces the title block. */
+.hc-spec {
+  --c: clamp(0, calc((var(--ss-pin, 0) - var(--in, 0.9)) / 0.06), 1);
+  position: absolute;
+  left: clamp(1.25rem, 6vw, 6rem);
+  bottom: clamp(5rem, 14vh, 9rem);
+  display: grid;
+  gap: 1.1rem;
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 1px solid color-mix(in srgb, var(--ss-accent) 55%, transparent);
+  opacity: var(--c);
+  transform: translateY(calc((1 - var(--c)) * 12px));
+}
+.hc-spec > div {
+  margin: 0;
+}
+.hc-spec dt {
+  margin: 0;
+  color: var(--ss-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.hc-spec dd {
+  margin: 0.3rem 0 0;
+  color: var(--ss-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.6vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hc-spec dd span {
+  margin-left: 0.5em;
+  color: var(--ss-accent);
+  font-size: 0.45em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Phones: the crop is a narrow window on the head, so there's no room for
+   leaders — the callouts become a stacked list at the bottom instead. */
+@media (max-width: 860px) {
+  .scroll-scrub {
+    --ss-fade-start: 0.71;
+    --ss-fade-k: 3.45;
+  }
+  .hero-alive {
+    object-position: var(--ss-mobile-position);
+  }
+  .hero-callouts {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0 1.25rem calc(8rem + env(safe-area-inset-bottom));
+  }
+  .hc {
+    position: static;
+    width: auto;
+    height: auto;
+  }
+  .hc__dot,
+  .hc__line {
+    display: none;
+  }
+  .hc__label {
+    position: static;
+    transform: translateY(calc((1 - var(--c)) * 10px));
+  }
+  .hc-spec {
+    position: static;
+    margin-top: 0.6rem;
+    gap: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-callouts,
+  .hero-alive {
+    display: none;
+  }
+  .scroll-scrub__copy {
+    opacity: 1;
+    transform: none;
+  }
+  #intro.scroll-scrub__chapter {
+    min-height: 100dvh;
   }
 }
 
