@@ -650,6 +650,19 @@ body.more-work-solid .topbar__cta:focus-visible {
   }
 }
 
+/* While the loader runs there is no film under the vignette / grain, so
+   their outlines show up on the empty stage as dark shapes (on a tall phone
+   screen: a big black block with a curved base). Keep them off until the film
+   arrives, then ease them in with it. */
+.scroll-scrub__stage::before,
+.scroll-scrub__stage::after {
+  transition: opacity 1.2s ease;
+}
+html.js body.pl-loading .scroll-scrub__stage::before,
+html.js body.pl-loading .scroll-scrub__stage::after {
+  opacity: 0;
+}
+
 .scroll-scrub__progress {
   position: absolute;
   z-index: 5;
@@ -1690,11 +1703,10 @@ body.more-work-solid .topbar__cta:focus-visible {
   }
 }
 
-/* ---- Phones: the horizontal "film" doesn't work with a thumb — a swipe
-   strip with content off to the right is undiscoverable and fights the
-   page scroll. Below the pin breakpoint (JS uses 768) every gallery
-   becomes a plain vertical stack: intro block, then its images one under
-   another. Native scroll, nothing hidden off-screen. ---- */
+/* ---- Phones (below the pin breakpoint, JS uses 768): no scroll-lock.
+   Each gallery is the intro block followed by a native horizontal snap rail
+   of cards (script.js builds .hg-rail; ~78vw cards so the next one peeks in,
+   arrows underneath). Without JS it falls back to a plain vertical stack. ---- */
 @media (max-width: 767px) {
   .horiz-gallery-wrapper,
   .hg-enhanced .horiz-gallery-wrapper {
@@ -1730,49 +1742,127 @@ body.more-work-solid .topbar__cta:focus-visible {
   .hg-progress {
     display: none;
   }
-  /* Drop the browser-chrome crop on phones: a 288px window onto a
-     3000px-tall catalog shows ~9% of the work and the drag-to-scrub
-     that reveals the rest fights thumb scroll. Un-clip it — the whole
-     creative flows at natural height under native page scroll. */
-  .hg-shot,
-  .hg-shot.is-fitted {
-    height: auto;
-    min-height: 0;
-    aspect-ratio: auto;
-    overflow: visible;
-    border: none;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
+  /* ---- Phones: each gallery's cards sit in a horizontal snap rail
+     (script.js builds .hg-rail from the panels after the intro). Cards are
+     ~78vw wide, so the next one peeks in from the right, and arrows sit
+     underneath. The screenshot frames keep their crop; the page still
+     scrolls vertically over them. ---- */
+  /* One card size for the whole rail — screenshots, grid tiles, teaser cards
+     and the final CTA all share it, so the row never steps up and down. */
+  .hg-rail {
+    --hg-gutter: clamp(1.25rem, 5vw, 1.75rem);
+    --hg-card-w: 78vw;
+    --hg-card-h: calc(var(--hg-card-w) * 1.1);
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0 var(--hg-gutter);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--hg-gutter);
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
-  .hg-shot__chrome {
+  .hg-rail::-webkit-scrollbar {
     display: none;
   }
-  .hg-shot__frame,
-  .hg-shot.is-draggable .hg-shot__frame {
-    position: static;
-    inset: auto;
-    overflow: visible;
-    cursor: default;
-    touch-action: auto;
+  .hg-rail > .hg-panel {
+    flex: 0 0 var(--hg-card-w);
+    width: var(--hg-card-w) !important;
+    height: var(--hg-card-h);
+    min-height: 0;
+    padding: 0;
+    justify-content: flex-start;
+    scroll-snap-align: start;
   }
-  .hg-shot__frame img,
-  .hg-shot.is-draggable .hg-shot__frame img {
-    position: static;
-    width: 100%;
-    height: auto;
-    animation: none !important;
-    transform: none !important;
-    border-radius: 8px;
-    border: 1px solid var(--line);
+  .hg-rail > .hg-panel--more-cta {
+    justify-content: center;
   }
-  .hg-shot__caption {
-    position: static;
-    opacity: 1;
-    margin: 0.6rem 0 0;
-    left: auto;
-    bottom: auto;
-    text-shadow: none;
+  /* grid panels dissolve into the rail: every tile becomes its own card */
+  .hg-rail > .hg-panel--grid,
+  .hg-rail .mgrid {
+    display: contents;
+  }
+  .hg-rail .hg-grid-head {
+    display: none;
+  }
+  .hg-rail .mgrid__item {
+    flex: 0 0 var(--hg-card-w);
+    height: var(--hg-card-h);
+    scroll-snap-align: start;
+  }
+  .hg-rail .mgrid__item .mgrid__btn,
+  .hg-rail .mgrid__item .mgrid__video-frame {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  /* screenshot frames fill the card (inline heights from the fit/measure
+     logic must not shrink them) */
+  .hg-rail .hg-shot {
+    height: 100% !important;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  /* "More work" teaser cards: the placeholder frame takes the height the
+     caption leaves over */
+  .hg-rail .hg-card__frame {
+    flex: 1;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .hg-rail-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -0.4rem;
+    padding: 0 clamp(1.25rem, 5vw, 1.75rem);
+  }
+  .hg-rail-nav__count {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  .hg-rail-nav__count b {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .hg-rail-nav__btns {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .hg-rail-nav__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+    border-radius: 50%;
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.25s ease, background-color 0.25s ease, transform 0.2s ease;
+  }
+  .hg-rail-nav__btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .hg-rail-nav__btn:active {
+    background: var(--accent-dim);
+    transform: scale(0.94);
+  }
+  .hg-rail-nav__btn:disabled {
+    opacity: 0.28;
+    pointer-events: none;
   }
   /* .mgrid on phones (1 column, captions shown) is handled by a
      max-width:767px block placed after the .mgrid component rules —

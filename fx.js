@@ -557,7 +557,10 @@
     }
     var vpH = window.innerHeight;
     var t = el.getBoundingClientRect().top;
-    return Math.max(0, Math.min(1, (1.05 * vpH - t) / (1.5 * vpH)));
+    // starts as the section's top enters the viewport and is fully green by the
+    // time that top reaches ~35% down the screen (was a 1.5-viewport crawl, so
+    // the section sat on screen half-green for ages)
+    return Math.max(0, Math.min(1, (1.0 * vpH - t) / (0.65 * vpH)));
   }
   function scanFor() {
     return workEl ? readReveal(workEl, "--work-reveal") : 0;

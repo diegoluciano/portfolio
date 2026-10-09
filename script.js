@@ -900,6 +900,10 @@
     var prefersReducedMotion =
       window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // On a touchscreen a vertical drag on a screenshot would fight page scroll
+    // (and the card rail's swipe) — there the auto-pan is all you get.
+    var coarseTouch =
+      window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 
     shots.forEach(function (shot) {
       var frame = shot.querySelector(".hg-shot__frame");
@@ -947,7 +951,7 @@
           var duration = Math.min(26, Math.max(8, overflow / 84));
           shot.style.setProperty("--hg-shot-duration", duration.toFixed(2) + "s");
           minOffset = -overflow;
-          shot.classList.toggle("is-draggable", !prefersReducedMotion);
+          shot.classList.toggle("is-draggable", !prefersReducedMotion && !coarseTouch);
         } else {
           // Creative is shorter than the frame → collapse the container onto
           // it so there's no black letterbox inside the browser chrome.
@@ -982,7 +986,7 @@
         document.fonts.ready.then(measure);
       }
 
-      if (!prefersReducedMotion) wireDrag();
+      if (!prefersReducedMotion && !coarseTouch) wireDrag();
 
       /* Grab-and-position. On pointerdown the viewer takes the image over
          from the auto-pan — seamlessly, from wherever it currently sits —
@@ -1152,7 +1156,7 @@
           // (body.scanner-pinned). Everything else is unchanged.
           var isMoreWork = sec.id === "more-work";
           function wipeZone() {
-            return isMoreWork ? Math.round(window.innerHeight * 0.9) : 0;
+            return isMoreWork ? Math.round(window.innerHeight * 0.6) : 0;
           }
           function setMWReveal(p) {
             sec.style.setProperty("--more-work-reveal", p.toFixed(4));
@@ -1303,7 +1307,7 @@
           trigger: workEl,
           start: "top top",
           end: function () {
-            return "+=" + Math.round(window.innerHeight * 0.85);
+            return "+=" + Math.round(window.innerHeight * 0.6);
           },
           pin: true,
           scrub: 0.7,
@@ -1810,5 +1814,151 @@
     window.addEventListener("load", place);
     if (mobileMQ.addEventListener) mobileMQ.addEventListener("change", place);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+  });
+})();
+
+/* ============================================================
+   Mobile gallery rails. Below 768px the galleries aren't pinned: each one
+   becomes [intro text] + a native horizontal snap rail of its cards, with a
+   counter and prev/next arrows underneath (the ~78vw cards let the next one
+   peek in, so it reads as swipeable). The rail is built from the existing
+   panels at runtime and torn down again if the viewport grows past 768, so the
+   desktop pinned film keeps working off the untouched markup.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var sections = Array.prototype.slice.call(document.querySelectorAll("[data-hg]"));
+    if (!sections.length || !window.matchMedia) return;
+    var mq = window.matchMedia("(max-width: 767px)");
+
+    var CARD_SEL =
+      ".hg-panel--shot, .hg-panel--image, .hg-panel--card, .hg-panel--more-cta, .mgrid__item";
+    var CHEVRON_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18"></polyline></svg>';
+    var CHEVRON_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg>';
+
+    function pad(n) {
+      return n < 10 ? "0" + n : String(n);
+    }
+
+    function build(sec) {
+      if (sec.__rail) return;
+      var strip = sec.querySelector("[data-hg-strip]");
+      if (!strip) return;
+      var panels = Array.prototype.filter.call(strip.children, function (el) {
+        return el.classList.contains("hg-panel");
+      });
+      var intro = null;
+      panels.forEach(function (p) {
+        if (!intro && (p.classList.contains("hg-panel--intro") || p.classList.contains("hg-panel--more-intro"))) {
+          intro = p;
+        }
+      });
+      var rest = panels.filter(function (p) {
+        return p !== intro;
+      });
+      if (!rest.length) return;
+
+      var rail = document.createElement("div");
+      rail.className = "hg-rail";
+      rail.setAttribute("data-hg-rail", "");
+      rest.forEach(function (p) {
+        rail.appendChild(p);
+      });
+      if (intro) intro.insertAdjacentElement("afterend", rail);
+      else strip.insertBefore(rail, strip.firstChild);
+
+      var nav = document.createElement("div");
+      nav.className = "hg-rail-nav";
+      nav.innerHTML =
+        '<span class="hg-rail-nav__count" aria-hidden="true"><b data-cur>01</b> / <span data-total>01</span></span>' +
+        '<span class="hg-rail-nav__btns">' +
+        '<button type="button" class="hg-rail-nav__btn" data-dir="-1" aria-label="Previous">' + CHEVRON_L + "</button>" +
+        '<button type="button" class="hg-rail-nav__btn" data-dir="1" aria-label="Next">' + CHEVRON_R + "</button>" +
+        "</span>";
+      rail.insertAdjacentElement("afterend", nav);
+
+      var cards = Array.prototype.slice.call(rail.querySelectorAll(CARD_SEL));
+      var cur = nav.querySelector("[data-cur]");
+      var total = nav.querySelector("[data-total]");
+      var prev = nav.querySelector('[data-dir="-1"]');
+      var next = nav.querySelector('[data-dir="1"]');
+      total.textContent = pad(cards.length);
+
+      function padLeft() {
+        return parseFloat(getComputedStyle(rail).paddingLeft) || 0;
+      }
+      function nearest() {
+        var target = rail.scrollLeft + padLeft();
+        var best = 0;
+        var bestD = Infinity;
+        cards.forEach(function (c, i) {
+          var d = Math.abs(c.offsetLeft - target);
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        });
+        return best;
+      }
+      function update() {
+        var max = rail.scrollWidth - rail.clientWidth;
+        cur.textContent = pad(nearest() + 1);
+        prev.disabled = rail.scrollLeft <= 2;
+        next.disabled = rail.scrollLeft >= max - 2;
+      }
+      function go(dir) {
+        var i = Math.max(0, Math.min(cards.length - 1, nearest() + dir));
+        rail.scrollTo({ left: Math.max(0, cards[i].offsetLeft - padLeft()), behavior: "smooth" });
+      }
+      function onNav(e) {
+        var btn = e.target.closest ? e.target.closest("[data-dir]") : null;
+        if (btn) go(parseInt(btn.getAttribute("data-dir"), 10));
+      }
+      var raf = 0;
+      function onScroll() {
+        if (raf) return;
+        raf = requestAnimationFrame(function () {
+          raf = 0;
+          update();
+        });
+      }
+
+      nav.addEventListener("click", onNav);
+      rail.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", update);
+      update();
+
+      sec.__rail = {
+        rail: rail,
+        nav: nav,
+        cleanup: function () {
+          rail.removeEventListener("scroll", onScroll);
+          window.removeEventListener("resize", update);
+        },
+      };
+    }
+
+    function destroy(sec) {
+      var st = sec.__rail;
+      if (!st) return;
+      var strip = st.rail.parentNode;
+      Array.prototype.slice.call(st.rail.children).forEach(function (p) {
+        strip.insertBefore(p, st.rail);
+      });
+      st.cleanup();
+      st.rail.parentNode.removeChild(st.rail);
+      st.nav.parentNode.removeChild(st.nav);
+      delete sec.__rail;
+    }
+
+    function sync() {
+      sections.forEach(mq.matches ? build : destroy);
+      if (window.ScrollTrigger) window.ScrollTrigger.refresh();
+    }
+    if (mq.addEventListener) mq.addEventListener("change", sync);
+    else if (mq.addListener) mq.addListener(sync);
+    sync();
   });
 })();
