@@ -19,6 +19,16 @@
   --font-body: "Google Sans", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 
   --container: min(1180px, 92vw);
+
+  /* Side margin shared by the top bar and the hero content (title, kicker,
+     spec plate), so the DHL logo sits on the same vertical line as the name
+     at every viewport width. */
+  --edge: clamp(1.25rem, 6vw, 6rem);
+}
+@media (max-width: 860px) {
+  :root {
+    --edge: 1.25rem;
+  }
 }
 
 *,
@@ -400,7 +410,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: clamp(1.1rem, 3vw, 1.8rem) clamp(1.25rem, 4vw, 4rem);
+  padding: clamp(1.1rem, 3vw, 1.8rem) max(var(--edge), env(safe-area-inset-right))
+    clamp(1.1rem, 3vw, 1.8rem) max(var(--edge), env(safe-area-inset-left));
   pointer-events: none;
   mix-blend-mode: difference;
 }
@@ -460,6 +471,7 @@ body.more-work-solid .topbar__cta:focus-visible {
 }
 
 .topbar__logo-mark {
+  margin-left: -0.0176em; /* the D's own left side bearing, so its ink sits on the edge */
   font-family: "Covered By Your Grace", var(--font-display), cursive;
   font-size: clamp(1.9rem, 3.4vw, 2.5rem);
   line-height: 1;
@@ -689,7 +701,7 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   display: flex;
   align-items: center;
   min-height: 100dvh;
-  padding: clamp(5rem, 9vw, 8rem) clamp(1.25rem, 6vw, 6rem);
+  padding: clamp(5rem, 9vw, 8rem) var(--edge);
   pointer-events: none;
 }
 
@@ -705,7 +717,8 @@ html.js body.pl-loading .scroll-scrub__stage::after {
 
 .scroll-scrub__kicker {
   max-width: 30ch;
-  margin: 0 0 1rem;
+  /* same optical correction as the title below it, at the kicker's own size */
+  margin: 0 0 1rem -0.081em;
   color: var(--ss-accent);
   font-family: var(--font-body);
   font-size: 0.8rem;
@@ -716,7 +729,10 @@ html.js body.pl-loading .scroll-scrub__stage::after {
 
 .scroll-scrub__title {
   max-width: 15ch;
-  margin: 0;
+  /* Optical alignment: the display initials (D / H / L) carry ~0.081em of
+     left side bearing, which at this size pushes the ink visibly right of the
+     kicker and tags above/below. Pull the block back by exactly that. */
+  margin: 0 0 0 -0.081em;
   color: var(--ss-ink);
   font-family: var(--font-display);
   font-size: clamp(3rem, 8vw, 8.5rem);
@@ -815,9 +831,9 @@ html.js body.pl-loading .scroll-scrub__stage::after {
     justify-content: flex-start;
     /* lift the copy well clear of the scroll cue at the bottom — the tags
        row was landing right on the "SCROLL" label on narrow screens */
-    padding: 6.5rem max(1.25rem, env(safe-area-inset-right))
+    padding: 6.5rem max(var(--edge), env(safe-area-inset-right))
       calc(8rem + env(safe-area-inset-bottom))
-      max(1.25rem, env(safe-area-inset-left));
+      max(var(--edge), env(safe-area-inset-left));
   }
 
   .scroll-scrub__copy {
@@ -1104,7 +1120,7 @@ html.js body.pl-loading .scroll-scrub__stage::after {
 .hc-spec {
   --c: clamp(0, calc((var(--ss-pin, 0) - var(--in, 0.9)) / 0.06), 1);
   position: absolute;
-  left: clamp(1.25rem, 6vw, 6rem);
+  left: var(--edge);
   bottom: clamp(5rem, 14vh, 9rem);
   display: grid;
   gap: 1.1rem;
