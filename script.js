@@ -1,3 +1,7 @@
+/* Portrait phones / small tablets: use the portrait-cropped hero clips.
+   One definition, shared by the loader and the scroll-scrub engine. */
+var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
+
 /* ============================================================
    Loader — the loading IS the title. Each of the three words
    "inks in" left→right and its fill position is that word's
@@ -67,8 +71,19 @@
   var preload = (window.__heroPreload = {});
   var heroRoot0 = document.querySelector("[data-scroll-scrub-root]");
   var aliveEl0 = document.querySelector("[data-hero-alive]");
-  var filmUrl = heroRoot0 && heroRoot0.getAttribute("data-clip");
-  var loopUrl = aliveEl0 && aliveEl0.getAttribute("data-src");
+  // Portrait phones/tablets get a centred, portrait-cropped, lighter encode of
+  // each clip (same framing as the full 16:9 file at that aspect, ~1/3 the
+  // bytes). Landscape phones keep the full clips — a portrait crop would zoom.
+  var usePortraitClips = window.matchMedia(PORTRAIT_CLIPS_MQ).matches;
+  var filmUrl =
+    heroRoot0 &&
+    ((usePortraitClips && heroRoot0.getAttribute("data-clip-mobile")) ||
+      heroRoot0.getAttribute("data-clip"));
+  var loopUrl =
+    aliveEl0 &&
+    ((usePortraitClips && aliveEl0.getAttribute("data-src-mobile")) ||
+      aliveEl0.getAttribute("data-src"));
+  window.__heroSources = { film: filmUrl, loop: loopUrl };
   var clipUrls = [filmUrl, loopUrl].filter(Boolean);
   var bytes = {};
   var progressHook = null;
@@ -242,14 +257,12 @@
   /* ---- Hero entrance: a designed glitch ---------------------------------
      Runs once, the moment the loader lets the film exist. The film locks on
      through horizontal slice displacement + an RGB split (SVG #hero-glitch
-     in index.html) that settles to a clean frame, then an emerald scan line
-     sweeps down it. Everything is set in one task (stage dark → filter on →
+     in index.html) that settles to a clean frame. Everything is set in one task (stage dark → filter on →
      loading class off) so there is never a flash of the un-glitched frame,
      and the filter is dropped afterwards so it costs nothing. Returns the
      timeline (handy for scrubbing it in devtools: __heroEntrance()). */
   function heroEntrance() {
     var media = document.querySelector(".scroll-scrub__media");
-    var scan = document.querySelector("[data-hero-scan]");
     var noise = document.getElementById("hg-noise");
     var disp = document.getElementById("hg-disp");
     var offR = document.getElementById("hg-r");
@@ -286,7 +299,6 @@
       onComplete: function () {
         media.style.filter = "";
         gsap.set(media, { clearProps: "opacity" });
-        if (scan) gsap.set(scan, { opacity: 0 });
       },
     });
     beats.forEach(function (b) {
@@ -301,23 +313,6 @@
     // settle: the slices and the colour split relax to nothing
     tl.to(st, { scale: 0, split: 0, duration: 0.6, ease: "power3.out", onUpdate: apply }, 0.64);
     tl.set(media, { opacity: 1 }, 0.64);
-    // the emerald scanner line sweeps the frame as it resolves
-    if (scan) {
-      tl.set(scan, { y: 0, opacity: 0 }, 0.5);
-      tl.to(scan, { opacity: 1, duration: 0.1 }, 0.5);
-      tl.to(
-        scan,
-        {
-          y: function () {
-            return scan.parentNode.clientHeight;
-          },
-          duration: 0.95,
-          ease: "power2.inOut",
-        },
-        0.5
-      );
-      tl.to(scan, { opacity: 0, duration: 0.25 }, 1.2);
-    }
     return tl;
   }
   window.__heroEntrance = heroEntrance;
@@ -513,7 +508,9 @@
       return coarsePointer || smallViewport.matches;
     }
     function sourceFor(segment) {
-      return isMobile() && segment.mobileClip ? segment.mobileClip : segment.clip;
+      return segment.mobileClip && window.matchMedia(PORTRAIT_CLIPS_MQ).matches
+        ? segment.mobileClip
+        : segment.clip;
     }
 
     var runtime = segments.map(function (segment, index) {
@@ -826,6 +823,7 @@
             id: "intro",
             poster: "",
             clip: clip,
+            mobileClip: heroRoot.getAttribute("data-clip-mobile") || undefined,
             title: "Diego Henrique Luciano",
             kicker: "Design Engineer",
             tags: ["Design Systems", "AI Prototyping", "UI Engineering"],
@@ -1774,7 +1772,7 @@
 
     // The loader already downloaded the loop clip; hand it to the <video>.
     if (alive && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      var aliveUrl = alive.getAttribute("data-src");
+      var aliveUrl = (window.__heroSources && window.__heroSources.loop) || alive.getAttribute("data-src");
       var aliveBlob = window.__heroPreload && window.__heroPreload[aliveUrl];
       var useDirect = function () {
         alive.src = aliveUrl;

@@ -240,31 +240,10 @@ html.js body.pl-loading .scroll-scrub__poster {
 
 /* Hero film entrance — a designed glitch, not a defect: the film locks on
    through horizontal slice displacement + an RGB split (SVG filter
-   #hero-glitch, animated by script.js) that settles into a clean frame,
-   then an emerald scanner line sweeps down it — the same line the rest of
-   the site uses. Runs once when the loader drops .pl-loading. The filter is
-   removed from the element when it finishes, so it costs nothing after.
+   #hero-glitch, animated by script.js) that settles into a clean frame.
+   Runs once when the loader drops .pl-loading. The filter is removed from
+   the element when it finishes, so it costs nothing after.
    No-JS / reduced-motion skip it (the loader drops html.js in those paths). */
-.hero-scan {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 4;
-  width: 100%;
-  height: 2px;
-  background: var(--ss-accent, #28f2a4);
-  box-shadow:
-    0 0 14px var(--ss-accent, #28f2a4),
-    0 0 42px color-mix(in srgb, var(--ss-accent, #28f2a4) 55%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-scan {
-    display: none;
-  }
-}
 
 /* Work reveal — a full-width emerald "scanner" wipes #work from top to bottom
    as you scroll it in, its leading edge tracked by the particle line. fx.js
