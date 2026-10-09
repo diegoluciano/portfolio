@@ -502,6 +502,7 @@
   // ---- scroll → morph + opacity envelope ---------------------
   var workEl = document.getElementById("work");
   var moreWorkEl = document.getElementById("more-work");
+  var heroPinEl = document.querySelector("[data-scroll-scrub-root]"); // carries --ss-pin (script.js)
   var marks = {
     stats: Infinity,
     pillars: Infinity,
@@ -769,7 +770,18 @@
     // as mDisp reaches IDX.grid (right at marks.stats), which would cut the
     // fog off before fogT (deliberately stretched past marks.stats) finishes
     // fading it — the whole point is letting it linger into the next section.
-    drawFog((1 - fogT) * oDisp);
+    // The fog canvas sits above the hero's text, and it's at full strength just
+    // as the callouts / spec plate arrive — which washes the backdrop out behind
+    // the white copy. Thin it down while the head opens and the labels come in
+    // (hero pin ~0.35 → 0.72, so it is already thin when the first label
+    // lands at ~0.55); it keeps a hint of mist, just not enough to cost
+    // contrast.
+    var fogGain = 1;
+    if (heroPinEl) {
+      var heroPin = parseFloat(heroPinEl.style.getPropertyValue("--ss-pin")) || 0;
+      fogGain = 1 - 0.85 * smooth(0.35, 0.72, heroPin);
+    }
+    drawFog((1 - fogT) * oDisp * fogGain);
     gl.drawArrays(gl.POINTS, 0, COUNT);
   }
 

@@ -312,6 +312,19 @@ body.scanner-pinned #work {
 #work .section__subtitle {
   transition: color 0.4s ease;
 }
+
+/* copy that differs between the pinned desktop film and the phone swipe rails */
+.copy-mobile {
+  display: none;
+}
+@media (max-width: 767px) {
+  .copy-desktop {
+    display: none;
+  }
+  .copy-mobile {
+    display: inline;
+  }
+}
 body.work-solid #work .eyebrow,
 body.work-solid #work .section__title,
 body.work-solid #work .section__subtitle {
@@ -631,6 +644,13 @@ body.more-work-solid .topbar__cta:focus-visible {
   pointer-events: none;
   opacity: 0.5;
   mix-blend-mode: soft-light;
+  /* The grain lifts pure black to a blue-grey, so left alone it makes the
+     hero's bottom edge visibly lighter than the flat #05070a of the next
+     section — a hard step where the two meet. Fade it out toward the stage's
+     bottom edge. (The pseudo-element is inset -20%, so the stage's bottom
+     edge sits at 85.7% of its box: fully clear there, fade from ~62%.) */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 85.7%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 85.7%);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
 }
@@ -1168,13 +1188,17 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   .hero-alive {
     object-position: var(--ss-mobile-position);
   }
+  /* Sat at the very bottom of the screen: on a phone the face fills most of
+     the frame, so anything higher lands on the beard. (The scroll cue is
+     already gone by the time these appear, so no clearance is needed for it.) */
   .hero-callouts {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: flex-start;
-    gap: 0.85rem;
-    padding: 0 1.25rem calc(8rem + env(safe-area-inset-bottom));
+    gap: 0.6rem;
+    padding: 0 max(var(--edge), env(safe-area-inset-right)) calc(1.5rem + env(safe-area-inset-bottom))
+      max(var(--edge), env(safe-area-inset-left));
   }
   .hc {
     position: static;
@@ -1189,10 +1213,17 @@ html.js body.pl-loading .scroll-scrub__stage::after {
     position: static;
     transform: translateY(calc((1 - var(--c)) * 10px));
   }
+  /* spec plate: the two facts side by side instead of stacked — half the height */
   .hc-spec {
     position: static;
-    margin-top: 0.6rem;
-    gap: 0.8rem;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    column-gap: 1.75rem;
+    margin-top: 0.7rem;
+    padding-left: 0.85rem;
+  }
+  .hc-spec dd {
+    font-size: clamp(1.2rem, 5.6vw, 1.6rem);
   }
 }
 
