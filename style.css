@@ -1492,6 +1492,18 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   line-height: 1.5;
 }
 
+.hg-meta a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.2em;
+  transition: color 0.2s ease;
+}
+.hg-meta a:hover,
+.hg-meta a:focus-visible {
+  color: var(--accent);
+}
+
 .hg-panel--image {
   width: min(38vw, 22rem);
   padding: clamp(0.75rem, 1.5vw, 1.25rem);
@@ -1939,6 +1951,21 @@ html.js body.pl-loading .scroll-scrub__stage::after {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* Grid size modifiers for the other case studies: 2-up for short sets,
+   4-up (on a wider panel) for the long ones so they still fit one screen. */
+@media (min-width: 768px) {
+  .mgrid--2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1100px) {
+  .hg-panel--grid-wide {
+    width: min(92vw, 76rem);
+  }
+  .mgrid--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
 .mgrid__btn,
 .mgrid__video-frame {
   display: block;
@@ -2263,6 +2290,23 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
+/* real thumbnail inside a teaser card */
+.hg-card__frame picture,
+.hg-card__frame img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hg-card__frame img {
+  transition: transform 0.55s ease;
+}
+.hg-panel--card:hover .hg-card__frame img {
+  transform: scale(1.04);
+}
+
 .hg-panel--card:hover .hg-card__frame {
   border-color: var(--accent);
   transform: translateY(-2px);
@@ -2436,20 +2480,27 @@ body.more-work-solid #more-work .btn-outline:focus-visible {
 /* ============================================================
    Sub-page static topbar (all-work.html)
    ============================================================ */
+/* all-work: same fixed, difference-blended bar as the home page, so the logo and
+   "Back home" stay put while the galleries pin and scroll underneath */
 .topbar--static {
-  position: relative;
-  z-index: 10;
-  padding: clamp(1.5rem, 3vw, 2.2rem) 0;
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
-  mix-blend-mode: normal;
-  pointer-events: auto;
+  position: fixed;
+  z-index: 20;
+  padding: clamp(1.1rem, 3vw, 1.8rem) max(var(--edge), env(safe-area-inset-right))
+    clamp(1.1rem, 3vw, 1.8rem) max(var(--edge), env(safe-area-inset-left));
+  background: none;
+  border-bottom: 0;
+  mix-blend-mode: difference;
+  pointer-events: none;
 }
 
 .topbar--static .container {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .topbar--static .topbar__logo {
@@ -2460,7 +2511,8 @@ body.more-work-solid #more-work .btn-outline:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--muted);
+  pointer-events: auto;
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.06em;
