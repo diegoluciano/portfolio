@@ -1999,6 +1999,22 @@ html.js body.pl-loading .scroll-scrub__stage::after {
 .mgrid__btn img {
   transition: transform 0.55s ease;
 }
+/* blurred inline placeholder behind the thumb; the real image fades in when decoded */
+.mgrid__btn,
+.hg-card__frame {
+  background-size: cover;
+  background-position: center;
+}
+.js .mgrid__btn img,
+.js .hg-card__frame img {
+  opacity: 0;
+  transition: transform 0.55s ease, opacity 0.45s ease;
+}
+.js .mgrid__btn img.is-loaded,
+.js .hg-card__frame img.is-loaded {
+  opacity: 1;
+}
+
 .mgrid__video-frame .mgrid__cap {
   opacity: 1;
 }

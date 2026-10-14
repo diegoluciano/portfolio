@@ -1960,3 +1960,54 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
     sync();
   });
 })();
+
+/* ============================================================
+   Thumbnails: tiny blurred placeholder first (inline CSS background),
+   the real image fades in once decoded, and every section's images are
+   switched to eager loading a few screens BEFORE it scrolls in — so the
+   thumbs are already there when the pinned gallery reaches them.
+   ============================================================ */
+(function () {
+  "use strict";
+  var imgs = Array.prototype.slice.call(
+    document.querySelectorAll(".mgrid__btn img, .hg-card__frame img")
+  );
+  if (!imgs.length) return;
+
+  function shown(img) {
+    img.classList.add("is-loaded");
+  }
+  imgs.forEach(function (img) {
+    if (img.complete && img.naturalWidth) {
+      shown(img);
+    } else {
+      img.addEventListener("load", function () { shown(img); }, { once: true });
+      img.addEventListener("error", function () { shown(img); }, { once: true });
+    }
+  });
+
+  var saveData = navigator.connection && navigator.connection.saveData;
+  if (saveData) return; // keep native lazy loading on data-saver connections
+
+  function eager(root) {
+    root.querySelectorAll('img[loading="lazy"]').forEach(function (img) {
+      img.loading = "eager";
+    });
+  }
+  if (!("IntersectionObserver" in window)) {
+    imgs.forEach(function (img) { img.loading = "eager"; });
+    return;
+  }
+  var io = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          eager(e.target);
+          io.unobserve(e.target);
+        }
+      });
+    },
+    { rootMargin: "300% 0px 300% 0px" }
+  );
+  document.querySelectorAll("[data-hg]").forEach(function (sec) { io.observe(sec); });
+})();
