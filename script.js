@@ -2009,3 +2009,127 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
   );
   document.querySelectorAll("[data-hg]").forEach(function (sec) { io.observe(sec); });
 })();
+
+/* ============================================================
+   Back to top (home) — show after the hero, ring = scroll progress.
+   ============================================================ */
+(function () {
+  "use strict";
+  var btn = document.querySelector("[data-totop]");
+  if (!btn) return;
+  var bar = btn.querySelector(".totop__bar");
+  var C = 188.5;
+  var ticking = false;
+  function update() {
+    ticking = false;
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    var p = Math.min(1, Math.max(0, y / max));
+    bar.style.strokeDashoffset = (C * (1 - p)).toFixed(1);
+    btn.classList.toggle("is-on", y > window.innerHeight * 0.9);
+  }
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  // The portrait follows the pointer: four photos (front, left, up-left, up)
+  // crossfade by the angle toward the cursor, strength grows with distance,
+  // and hover / keyboard focus makes him look up. Skipped on touch and for
+  // reduced motion (the front photo stays).
+  var stack = btn.querySelector(".totop__stack");
+  var poses = {};
+  if (stack) {
+    [].forEach.call(stack.querySelectorAll("img[data-pose]"), function (im) {
+      poses[im.getAttribute("data-pose")] = im;
+    });
+  }
+  var canTrack =
+    stack &&
+    poses.left && poses.upleft && poses.up &&
+    window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (canTrack) {
+    var cur = { k: 0, ul: 0, u: 0, tx: 0, ty: 0, s: 1.06 };
+    var tgt = { k: 0, ul: 0, u: 0, tx: 0, ty: 0, s: 1.06 };
+    var poseBox = stack.querySelector(".totop__poses");
+    var hot = false;
+    var running = false;
+    function ramp(v, a, b) {
+      var t = Math.max(0, Math.min(1, (v - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    }
+    function aim(e) {
+      if (hot || !btn.classList.contains("is-on")) return;
+      var r = btn.querySelector(".totop__dot").getBoundingClientRect();
+      var dx = e.clientX - (r.left + r.width / 2);
+      var dy = e.clientY - (r.top + r.height / 2);
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      // 0° = cursor to the left, 90° = straight up; right/below clamps
+      var phi = Math.atan2(-dy, -dx) * 180 / Math.PI;
+      phi = Math.max(0, Math.min(90, phi));
+      tgt.k = ramp(dist, 70, 260);          // how far from "front" he turns
+      tgt.ul = ramp(phi, 10, 38);           // left → up-left (dissolve over left)
+      tgt.u = ramp(phi, 52, 80);            // up-left → up (dissolve over up-left)
+      tgt.tx = Math.max(-1, Math.min(1, dx / 600)) * 2;
+      tgt.ty = Math.max(-1, Math.min(1, dy / 400)) * 1.5;
+      tgt.s = 1.1;
+      kick();
+    }
+    function look(up) {
+      hot = up;
+      if (up) {
+        tgt.k = 1; tgt.ul = 1; tgt.u = 1;
+        tgt.tx = 0; tgt.ty = 0; tgt.s = 1.14;
+      } else {
+        tgt.k = 0; tgt.ul = 0; tgt.u = 0;
+        tgt.tx = tgt.ty = 0; tgt.s = 1.06;
+      }
+      kick();
+    }
+    function step() {
+      var moving = false;
+      for (var key in cur) {
+        var d = tgt[key] - cur[key];
+        if (Math.abs(d) > 0.002) moving = true;
+        cur[key] += d * 0.16;
+      }
+      poseBox.style.opacity = cur.k.toFixed(3);
+      poses.upleft.style.opacity = cur.ul.toFixed(3);
+      poses.up.style.opacity = cur.u.toFixed(3);
+      stack.style.setProperty("--tx", cur.tx.toFixed(2) + "px");
+      stack.style.setProperty("--ty", cur.ty.toFixed(2) + "px");
+      stack.style.setProperty("--s", cur.s.toFixed(3));
+      if (moving) requestAnimationFrame(step);
+      else running = false;
+    }
+    function kick() {
+      if (!running) {
+        running = true;
+        requestAnimationFrame(step);
+      }
+    }
+    window.addEventListener("pointermove", aim, { passive: true });
+    document.addEventListener("mouseleave", function () { look(false); });
+    btn.addEventListener("pointerenter", function () { look(true); });
+    btn.addEventListener("pointerleave", function () { look(false); });
+    btn.addEventListener("focus", function () {
+      if (btn.matches(":focus-visible")) look(true);
+    });
+    btn.addEventListener("blur", function () { look(false); });
+  }
+
+  btn.addEventListener("click", function () {
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (window.__lenis && !reduce) {
+      window.__lenis.scrollTo(0, { duration: 1.8 });
+    } else {
+      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    }
+    btn.blur();
+  });
+  update();
+})();
