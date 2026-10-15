@@ -1220,25 +1220,23 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
             },
           });
 
-          // Dex "brand in use" grid panel, if this strip has one: the
-          // tiles sit inside the horizontally-translating strip, so a
-          // normal (vertical) ScrollTrigger would fire the instant the
-          // pin starts — containerAnimation re-bases start/end against
-          // the strip's horizontal position instead, so the stagger
-          // plays only once the panel actually scrolls into view.
+          // Grid panel, if this strip has one: its tiles stagger in as soon
+          // as the section is on screen (not when the panel itself slides
+          // in), so arriving at a project never shows an empty gutter where
+          // the thumbnails peek in beside the intro panel.
           if (gridPanel) {
             var tiles = gridPanel.querySelectorAll(".mgrid__item");
             gsap.set(tiles, { autoAlpha: 0, y: 30 });
             ScrollTrigger.create({
-              trigger: gridPanel,
-              containerAnimation: hTween,
-              start: "left 85%",
+              trigger: sec,
+              start: "top 85%",
+              once: true,
               onEnter: function () {
                 gsap.to(tiles, {
                   autoAlpha: 1,
                   y: 0,
                   duration: 0.6,
-                  stagger: 0.07,
+                  stagger: 0.05,
                   ease: "power2.out",
                   overwrite: true,
                 });
