@@ -2673,3 +2673,37 @@ body.more-work-solid #more-work .btn-outline:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .totop, .totop__label, .totop__arrow { transition: none; }
 }
+
+/* Project intro reveal (script.js): title words rise from a mask. Extra room
+   under the baseline keeps descenders inside the clip. */
+.tw {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.tw__i {
+  display: inline-block;
+  will-change: transform;
+}
+.rw {
+  display: inline-block;
+}
+
+/* Thumbnail flash (script.js): an emerald veil over the tile that fades out
+   as the image dissolves in; --flash runs 1 → 0. */
+.mgrid__item {
+  border-radius: 4px;
+  box-shadow: 0 0 calc(var(--flash, 0) * 28px) rgba(40, 242, 164, calc(var(--flash, 0) * 0.55));
+}
+.mgrid__btn::after,
+.mgrid__video-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(120% 120% at 50% 40%, #8bffd2 0%, var(--accent) 55%, #12c98a 100%);
+  opacity: var(--flash, 0);
+}

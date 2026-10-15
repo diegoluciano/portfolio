@@ -1145,7 +1145,6 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
           var strip = sec.querySelector("[data-hg-strip]");
           if (!strip) return;
           var progressBar = sec.querySelector(".hg-progress span");
-          var gridPanel = sec.querySelector("[data-mgrid]");
           // #more-work carries the emerald scanner wipe. Give its pin an
           // extra "wipe zone" of scroll at the very start: the strip holds
           // still while --more-work-reveal scrubs 0→1, so the wipe gets a
@@ -1220,29 +1219,6 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
             },
           });
 
-          // Grid panel, if this strip has one: its tiles stagger in as soon
-          // as the section is on screen (not when the panel itself slides
-          // in), so arriving at a project never shows an empty gutter where
-          // the thumbnails peek in beside the intro panel.
-          if (gridPanel) {
-            var tiles = gridPanel.querySelectorAll(".mgrid__item");
-            gsap.set(tiles, { autoAlpha: 0, y: 30 });
-            ScrollTrigger.create({
-              trigger: sec,
-              start: "top 85%",
-              once: true,
-              onEnter: function () {
-                gsap.to(tiles, {
-                  autoAlpha: 1,
-                  y: 0,
-                  duration: 0.6,
-                  stagger: 0.05,
-                  ease: "power2.out",
-                  overwrite: true,
-                });
-              },
-            });
-          }
         });
 
         ScrollTrigger.refresh();
@@ -2149,4 +2125,183 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
     btn.blur();
   });
   update();
+})();
+
+/* ============================================================
+   Project intro text reveal — when a project's intro panel comes into view
+   the eyebrow slides in, the title rises word by word from a mask (same
+   language as the hero), the lede and body fill in word by word, then the
+   spec list fades up. Fast (<1 s), once per panel. Text stays in the DOM;
+   skipped for reduced motion, and the hidden state only exists when GSAP
+   is running, so no-JS keeps everything visible.
+   ============================================================ */
+(function () {
+  "use strict";
+  if (typeof gsap === "undefined") return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  function words(root, mask) {
+    var out = [];
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      if (!node.nodeValue.trim()) return;
+      var frag = document.createDocumentFragment();
+      node.nodeValue.split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) {
+          frag.appendChild(document.createTextNode(part));
+          return;
+        }
+        var w = document.createElement("span");
+        w.className = mask ? "tw" : "rw";
+        if (mask) {
+          var inner = document.createElement("span");
+          inner.className = "tw__i";
+          inner.textContent = part;
+          w.appendChild(inner);
+          out.push(inner);
+        } else {
+          w.textContent = part;
+          out.push(w);
+        }
+        frag.appendChild(w);
+      });
+      node.parentNode.replaceChild(frag, node);
+    });
+    return out;
+  }
+
+  function stag(n, span, max) {
+    return n > 1 ? Math.min(max, span / (n - 1)) : 0;
+  }
+
+  function init() {
+    var panels = document.querySelectorAll(
+      "[data-hg]:not(#more-work) .hg-panel--intro"
+    );
+    if (!panels.length || !("IntersectionObserver" in window)) return;
+
+    panels.forEach(function (panel) {
+      var eyebrow = panel.querySelector(".hg-eyebrow");
+      var title = panel.querySelector(".hg-title");
+      var lede = panel.querySelector(".hg-lede");
+      var body = panel.querySelector(".hg-body-text");
+      var meta = panel.querySelector(".hg-meta");
+
+      var tw = title ? words(title, true) : [];
+      var lw = lede ? words(lede, false) : [];
+      var bw = body ? words(body, false) : [];
+
+      if (eyebrow) gsap.set(eyebrow, { autoAlpha: 0, x: -14 });
+      if (tw.length) gsap.set(tw, { yPercent: 115 });
+      if (lw.length) gsap.set(lw, { autoAlpha: 0, y: 8 });
+      if (bw.length) gsap.set(bw, { autoAlpha: 0, y: 8 });
+      if (meta) gsap.set(meta, { autoAlpha: 0, y: 10 });
+
+      var played = false;
+      function play() {
+        if (played) return;
+        played = true;
+        var tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+        if (eyebrow) tl.to(eyebrow, { autoAlpha: 1, x: 0, duration: 0.45 }, 0);
+        if (tw.length)
+          tl.to(tw, { yPercent: 0, duration: 0.6, stagger: stag(tw.length, 0.35, 0.07) }, 0.05);
+        if (lw.length)
+          tl.to(lw, { autoAlpha: 1, y: 0, duration: 0.35, stagger: stag(lw.length, 0.45, 0.02) }, 0.25);
+        if (bw.length)
+          tl.to(bw, { autoAlpha: 1, y: 0, duration: 0.35, stagger: stag(bw.length, 0.55, 0.014) }, 0.4);
+        if (meta) tl.to(meta, { autoAlpha: 1, y: 0, duration: 0.45 }, 0.75);
+      }
+
+      var io = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              play();
+              io.disconnect();
+            }
+          });
+        },
+        { threshold: 0.2, rootMargin: "0px 0px -8% 0px" }
+      );
+      io.observe(panel);
+      // safety net: never leave the copy hidden if the observer is starved
+      setTimeout(function () {
+        var r = panel.getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) play();
+      }, 4000);
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+
+/* ============================================================
+   Thumbnail reveal — each project thumbnail flashes in emerald (the site's
+   accent) and dissolves into the image, one by one, the moment it enters the
+   viewport (works for the pinned horizontal strip and the mobile rails alike,
+   since it is driven by IntersectionObserver rather than scroll maths).
+   Tiles that enter together are staggered left to right. Skipped for reduced
+   motion; the hidden state only exists while GSAP runs.
+   ============================================================ */
+(function () {
+  "use strict";
+  if (typeof gsap === "undefined") return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  function init() {
+    var tiles = [].slice.call(document.querySelectorAll("[data-hg] .mgrid__item"));
+    if (!tiles.length || !("IntersectionObserver" in window)) return;
+
+    var shown = new WeakSet();
+    gsap.set(tiles, { autoAlpha: 0, "--flash": 1 });
+
+    function flash(tile, delay) {
+      if (shown.has(tile)) return;
+      shown.add(tile);
+      var tl = gsap.timeline({
+        delay: delay,
+        onComplete: function () {
+          gsap.set(tile, { clearProps: "opacity,visibility,transform,--flash" });
+        },
+      });
+      tl.to(tile, { autoAlpha: 1, duration: 0.06, ease: "none" }, 0)
+        .fromTo(tile, { y: 14, scale: 0.97 }, { y: 0, scale: 1, duration: 0.45, ease: "power3.out" }, 0)
+        .to(tile, { "--flash": 0, duration: 0.5, ease: "power2.out" }, 0.07);
+    }
+
+    var io = new IntersectionObserver(
+      function (entries) {
+        var hit = entries
+          .filter(function (e) { return e.isIntersecting; })
+          .sort(function (a, b) {
+            return a.boundingClientRect.left - b.boundingClientRect.left ||
+                   a.boundingClientRect.top - b.boundingClientRect.top;
+          });
+        hit.forEach(function (e, i) {
+          flash(e.target, Math.min(i * 0.085, 0.9));
+          io.unobserve(e.target);
+        });
+      },
+      { threshold: 0.15 }
+    );
+    tiles.forEach(function (t) { io.observe(t); });
+
+    // safety net: never leave a thumbnail hidden while it is on screen
+    [5000, 10000].forEach(function (ms) {
+      setTimeout(function () {
+        tiles.forEach(function (t) {
+          if (shown.has(t)) return;
+          var r = t.getBoundingClientRect();
+          if (r.width && r.right > 0 && r.left < window.innerWidth && r.bottom > 0 && r.top < window.innerHeight) flash(t, 0);
+        });
+      }, ms);
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();
