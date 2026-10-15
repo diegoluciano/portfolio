@@ -2036,6 +2036,18 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
   }
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
+  // Coming back from another page (#anchor, bfcache, restored scroll) the page
+  // can jump while the loader still holds the scroll lock, without a scroll
+  // event reaching us — re-check on every signal and poll while loading.
+  window.addEventListener("load", onScroll);
+  window.addEventListener("pageshow", onScroll);
+  window.addEventListener("hashchange", onScroll);
+  document.addEventListener("visibilitychange", onScroll);
+  var polls = 0;
+  var poll = setInterval(function () {
+    update();
+    if (++polls > 40) clearInterval(poll); // ~20 s covers the hero preload
+  }, 500);
   // The portrait follows the pointer: four photos (front, left, up-left, up)
   // crossfade by the angle toward the cursor, strength grows with distance,
   // and hover / keyboard focus makes him look up. Skipped on touch and for
@@ -2124,10 +2136,15 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
 
   btn.addEventListener("click", function () {
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (window.__lenis && !reduce) {
-      window.__lenis.scrollTo(0, { duration: 1.8 });
+    var lenis = window.__lenis;
+    // Lenis ignores scrollTo while it is stopped — which is the case while the
+    // hero is still downloading (page locked) after coming back from another
+    // page via an #anchor — so fall back to a plain jump in that case.
+    var locked = document.body.classList.contains("pl-lock") || (lenis && lenis.isStopped);
+    if (lenis && !reduce && !locked) {
+      lenis.scrollTo(0, { duration: 1.8 });
     } else {
-      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+      window.scrollTo({ top: 0, behavior: reduce || locked ? "auto" : "smooth" });
     }
     btn.blur();
   });
