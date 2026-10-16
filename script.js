@@ -1844,7 +1844,7 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
       var nav = document.createElement("div");
       nav.className = "hg-rail-nav";
       nav.innerHTML =
-        '<span class="hg-rail-nav__count" aria-hidden="true"><b data-cur>01</b> / <span data-total>01</span></span>' +
+        '<span class="hg-rail-nav__dots" aria-hidden="true"></span>' +
         '<span class="hg-rail-nav__btns">' +
         '<button type="button" class="hg-rail-nav__btn" data-dir="-1" aria-label="Previous">' + CHEVRON_L + "</button>" +
         '<button type="button" class="hg-rail-nav__btn" data-dir="1" aria-label="Next">' + CHEVRON_R + "</button>" +
@@ -1852,11 +1852,14 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
       rail.insertAdjacentElement("afterend", nav);
 
       var cards = Array.prototype.slice.call(rail.querySelectorAll(CARD_SEL));
-      var cur = nav.querySelector("[data-cur]");
-      var total = nav.querySelector("[data-total]");
+      var dotsEl = nav.querySelector(".hg-rail-nav__dots");
+      var dots = cards.map(function () {
+        var d = document.createElement("i");
+        dotsEl.appendChild(d);
+        return d;
+      });
       var prev = nav.querySelector('[data-dir="-1"]');
       var next = nav.querySelector('[data-dir="1"]');
-      total.textContent = pad(cards.length);
 
       function padLeft() {
         return parseFloat(getComputedStyle(rail).paddingLeft) || 0;
@@ -1876,7 +1879,10 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
       }
       function update() {
         var max = rail.scrollWidth - rail.clientWidth;
-        cur.textContent = pad(nearest() + 1);
+        var at = nearest();
+        dots.forEach(function (d, i) {
+          d.className = i === at ? "is-on" : "";
+        });
         prev.disabled = rail.scrollLeft <= 2;
         next.disabled = rail.scrollLeft >= max - 2;
       }
@@ -2302,6 +2308,41 @@ var PORTRAIT_CLIPS_MQ = "(max-width: 860px) and (max-aspect-ratio: 4/5)";
     });
   }
 
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+
+/* ============================================================
+   "More work" cards: pointer tilt + highlight while hovering (mouse only,
+   never for touch or reduced motion). The card frame gets --rx/--ry (tilt),
+   --gx/--gy (highlight position) and --px/--py (image parallax).
+   ============================================================ */
+(function () {
+  "use strict";
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  function init() {
+    [].forEach.call(document.querySelectorAll("#more-work .hg-panel--card"), function (card) {
+      var frame = card.querySelector(".hg-card__frame");
+      if (!frame) return;
+      function reset() {
+        ["--rx", "--ry", "--px", "--py"].forEach(function (k) { frame.style.removeProperty(k); });
+      }
+      card.addEventListener("pointermove", function (e) {
+        if (e.pointerType && e.pointerType !== "mouse") return;
+        var r = frame.getBoundingClientRect();
+        var x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+        var y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+        frame.style.setProperty("--rx", ((0.5 - y) * 7).toFixed(2) + "deg");
+        frame.style.setProperty("--ry", ((x - 0.5) * 9).toFixed(2) + "deg");
+        frame.style.setProperty("--gx", (x * 100).toFixed(1) + "%");
+        frame.style.setProperty("--gy", (y * 100).toFixed(1) + "%");
+        frame.style.setProperty("--px", ((0.5 - x) * 16).toFixed(1) + "px");
+        frame.style.setProperty("--py", ((0.5 - y) * 12).toFixed(1) + "px");
+      });
+      card.addEventListener("pointerleave", reset);
+    });
+  }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();

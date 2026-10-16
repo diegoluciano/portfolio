@@ -407,9 +407,12 @@ a {
 }
 
 .eyebrow::before {
+  /* a dot, not a dash */
   content: "";
-  width: 1.6rem;
-  height: 1px;
+  flex: none;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
   background: var(--accent);
 }
 
@@ -990,9 +993,14 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   font-size: clamp(3rem, 6.5vw, 6rem);
   font-weight: 700;
   line-height: 0.95;
-  color: var(--accent);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  /* same outlined numerals as the pillar index (01 02 03). The stroke is
+     painted under a near-bg fill so the variable font's overlapping
+     contours do not show as inner lines. */
+  color: rgba(5, 7, 10, 0.97);
+  -webkit-text-stroke: clamp(2px, calc(0.2vw + 1px), 3px) var(--accent);
+  paint-order: stroke fill;
 }
 
 .stat__label {
@@ -1312,8 +1320,9 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   font-family: var(--font-display);
   font-size: 3rem;
   font-weight: 700;
-  -webkit-text-stroke: 1px var(--accent);
-  color: transparent;
+  -webkit-text-stroke: 2px var(--accent);
+  color: rgba(5, 7, 10, 0.97);
+  paint-order: stroke fill;
 }
 
 .pillar__title {
@@ -1859,17 +1868,24 @@ html.js body.pl-loading .scroll-scrub__stage::after {
     margin-top: -0.4rem;
     padding: 0 clamp(1.25rem, 5vw, 1.75rem);
   }
-  .hg-rail-nav__count {
-    color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-variant-numeric: tabular-nums;
+  .hg-rail-nav__dots {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
   }
-  .hg-rail-nav__count b {
-    color: var(--ink);
-    font-weight: 700;
+  .hg-rail-nav__dots i {
+    flex: none;
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--line);
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  .hg-rail-nav__dots i.is-on {
+    width: 16px;
+    background: var(--accent);
   }
   .hg-rail-nav__btns {
     display: flex;
@@ -2302,7 +2318,7 @@ html.js body.pl-loading .scroll-scrub__stage::after {
   overflow: hidden;
   border-radius: 4px;
   border: 1px solid var(--line);
-  background: var(--bg-soft);
+  background-color: var(--bg-soft);
   transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
@@ -2706,4 +2722,130 @@ body.more-work-solid #more-work .btn-outline:focus-visible {
   pointer-events: none;
   background: radial-gradient(120% 120% at 50% 40%, #8bffd2 0%, var(--accent) 55%, #12c98a 100%);
   opacity: var(--flash, 0);
+}
+
+.pillar__body strong { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   "More work" cards: no border (it shimmered into dashes on the emerald
+   background), soft shadows for depth, and a richer hover: pointer tilt
+   with a moving highlight, a "View project" chip and an underlined title.
+   script.js feeds --rx/--ry/--gx/--gy/--px/--py while the mouse moves.
+   ============================================================ */
+#more-work .hg-card__frame {
+  border: 0;
+  border-radius: 10px;
+  isolation: isolate;
+  backface-visibility: hidden;
+  box-shadow: 0 0 0 1px rgba(244, 239, 225, 0.08), 0 16px 34px -20px rgba(0, 0, 0, 0.75);
+  transform: perspective(1100px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.4s ease,
+    color 0.4s ease, background-color 0.4s ease;
+}
+body.more-work-solid #more-work .hg-card__frame {
+  box-shadow: 0 16px 34px -18px rgba(4, 52, 36, 0.6);
+}
+/* the image overscans by a pixel so fractional card sizes never expose the
+   placeholder behind it at the edges */
+#more-work .hg-card__frame picture,
+#more-work .hg-card__frame img {
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+}
+#more-work .hg-card__frame img {
+  transform: scale(var(--zoom, 1.01)) translate(var(--px, 0px), var(--py, 0px));
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.45s ease;
+}
+/* moving highlight */
+#more-work .hg-card__frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(520px circle at var(--gx, 50%) var(--gy, 40%), rgba(255, 255, 255, 0.28), transparent 62%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+/* "View project" chip */
+#more-work .hg-card__frame::before {
+  content: "View project  \2197";
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  background: #28f2a4;
+  color: #05070a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: pre;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), background-color 0.4s ease, color 0.4s ease;
+  pointer-events: none;
+}
+body.more-work-solid #more-work .hg-card__frame::before {
+  background: #05070a;
+  color: #28f2a4;
+}
+#more-work .hg-card__title {
+  padding-bottom: 0.12em;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0% 2px no-repeat;
+  transition: color 0.4s ease, background-size 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@media (hover: hover) {
+  #more-work .hg-panel--card:hover .hg-card__frame,
+  #more-work .hg-panel--card:focus-visible .hg-card__frame {
+    --lift: -6px;
+    --zoom: 1.07;
+    border-color: transparent;
+    box-shadow: 0 0 0 1px rgba(40, 242, 164, 0.5), 0 34px 60px -26px rgba(0, 0, 0, 0.85), 0 0 46px -12px rgba(40, 242, 164, 0.4);
+  }
+  body.more-work-solid #more-work .hg-panel--card:hover .hg-card__frame {
+    box-shadow: 0 36px 60px -24px rgba(4, 52, 36, 0.75);
+  }
+  #more-work .hg-panel--card:hover .hg-card__frame::after,
+  #more-work .hg-panel--card:focus-visible .hg-card__frame::after {
+    opacity: 1;
+  }
+  #more-work .hg-panel--card:hover .hg-card__frame::before,
+  #more-work .hg-panel--card:focus-visible .hg-card__frame::before {
+    opacity: 1;
+    transform: none;
+  }
+  #more-work .hg-panel--card:hover .hg-card__title,
+  #more-work .hg-panel--card:focus-visible .hg-card__title {
+    background-size: 100% 2px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #more-work .hg-card__frame,
+  #more-work .hg-card__frame img,
+  #more-work .hg-card__frame::before {
+    transition: none;
+  }
+}
+
+/* The fixed fx-field canvas (z-index 6, screen blend) washes out whatever is
+   under it; in "More work" that dulled the card art and speckled the edges
+   on the emerald background. Keep the strip (text and cards) above it, with
+   the scanner line on top of everything. */
+#more-work > .horiz-gallery-strip {
+  z-index: 7;
+}
+#more-work::after {
+  z-index: 8;
+}
+
+/* the blurred placeholder behind each thumbnail never repeats */
+.hg-card__frame,
+.mgrid__btn {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
