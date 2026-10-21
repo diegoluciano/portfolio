@@ -2849,3 +2849,58 @@ body.more-work-solid #more-work .hg-card__frame::before {
   background-size: cover;
   background-position: center;
 }
+
+/* finale: primary CTA + CV download side by side, same height and baseline */
+.finale__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.finale__actions .btn-cta,
+.finale__actions .btn-outline {
+  margin: 0;
+  box-sizing: border-box;
+  min-height: 3.9rem;
+  padding: 0 2.2rem;
+  justify-content: center;
+  font-size: 1.02rem;
+  letter-spacing: 0.03em;
+}
+.finale__actions .btn-outline {
+  font-weight: 700;
+}
+.finale__actions .btn-outline:hover svg {
+  transform: translateY(2px);
+}
+.finale__actions .btn-outline svg,
+.finale__actions .btn-cta svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+@media (max-width: 560px) {
+  .finale__actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: min(100%, 20rem);
+    margin-inline: auto;
+  }
+}
+
+/* finale buttons: equal width, and an outline strong enough to read as the same size as the filled one */
+.finale__actions .btn-cta,
+.finale__actions .btn-outline {
+  min-width: 15rem;
+}
+.finale__actions .btn-outline {
+  border-color: rgba(244, 239, 225, 0.32);
+}
+@media (max-width: 560px) {
+  .finale__actions .btn-cta,
+  .finale__actions .btn-outline {
+    min-width: 0;
+  }
+}
