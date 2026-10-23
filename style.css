@@ -982,7 +982,7 @@ html.js body.pl-loading .scroll-scrub__stage::after {
 
 .stats__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   row-gap: clamp(2.75rem, 6vw, 4.75rem);
 }
